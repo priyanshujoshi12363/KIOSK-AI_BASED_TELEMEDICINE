@@ -1,3 +1,10 @@
+export const Role = {
+  ASHA: "ASHA",
+  DOCTOR: "DOCTOR",
+  ADMIN: "ADMIN",
+  OPERATOR: "OPERATOR",
+};
+
 export const Gender = {
   MALE: "MALE",
   FEMALE: "FEMALE",
