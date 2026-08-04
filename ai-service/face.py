@@ -31,3 +31,15 @@ def embed(image_b64):
     img = _decode(image_b64)
     faces = _get_app().get(img)
     return [f.normed_embedding.tolist() for f in faces]
+
+
+def embed_best(image_b64):
+    img = _decode(image_b64)
+    faces = _get_app().get(img)
+    if not faces:
+        return {"faces": 0, "embedding": None}
+    faces.sort(
+        key=lambda f: (f.bbox[2] - f.bbox[0]) * (f.bbox[3] - f.bbox[1]),
+        reverse=True,
+    )
+    return {"faces": len(faces), "embedding": faces[0].normed_embedding.tolist()}

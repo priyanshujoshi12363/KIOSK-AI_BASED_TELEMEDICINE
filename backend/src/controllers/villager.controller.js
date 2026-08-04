@@ -4,7 +4,7 @@ import {
   hashAadhaar,
   aadhaarLast4,
 } from "../utils/aadhaar.js";
-import { getFaceEmbedding } from "../services/aiClient.js";
+import { getFaceEmbedding, getBestFaceEmbedding } from "../services/aiClient.js";
 import { assignAshaForVillage } from "../services/ashaAssignment.js";
 import { identifyByEmbedding } from "../services/faceMatch.js";
 
@@ -20,6 +20,7 @@ function toPublic(v) {
     aadhaarLast4: v.aadhaarLast4,
     abhaId: v.abhaId,
     faceRegistered: v.faceRegistered,
+    faceCount: Array.isArray(v.faceEmbeddings) ? v.faceEmbeddings.length : v.faceEmbedding ? 1 : 0,
     assignedAshaWorker: v.assignedAshaWorker,
     isActive: v.isActive,
     createdAt: v.createdAt,
@@ -38,6 +39,7 @@ export async function registerVillager(req, res) {
       address,
       abhaId,
       faceImage,
+      faceImages,
     } = req.body;
 
     if (!name || !aadhaarNumber || !village || !address) {
@@ -50,8 +52,14 @@ export async function registerVillager(req, res) {
       return res.status(400).json({ error: "aadhaarNumber must be 12 digits" });
     }
 
-    if (!faceImage) {
-      return res.status(400).json({ error: "faceImage is required" });
+    const images = Array.isArray(faceImages) && faceImages.length
+      ? faceImages
+      : faceImage
+        ? [faceImage]
+        : [];
+
+    if (images.length === 0) {
+      return res.status(400).json({ error: "at least one faceImage is required" });
     }
 
     const aadhaarHash = hashAadhaar(aadhaarNumber);
@@ -62,11 +70,16 @@ export async function registerVillager(req, res) {
         .json({ error: "Villager already registered with this Aadhaar" });
     }
 
-    let faceEmbedding;
-    try {
-      faceEmbedding = await getFaceEmbedding(faceImage);
-    } catch (err) {
-      return res.status(400).json({ error: `Face capture failed: ${err.message}` });
+    const faceEmbeddings = [];
+    for (let i = 0; i < images.length; i++) {
+      try {
+        const embedding = await getFaceEmbedding(images[i]);
+        faceEmbeddings.push(embedding);
+      } catch (err) {
+        return res
+          .status(400)
+          .json({ error: `Face capture failed on image ${i + 1}: ${err.message}` });
+      }
     }
 
     const assignedAshaWorker = await assignAshaForVillage(village);
@@ -81,7 +94,7 @@ export async function registerVillager(req, res) {
       abhaId,
       aadhaarHash,
       aadhaarLast4: aadhaarLast4(aadhaarNumber),
-      faceEmbedding,
+      faceEmbeddings,
       faceRegistered: true,
       assignedAshaWorker,
     });
@@ -107,14 +120,18 @@ export async function identifyVillager(req, res) {
 
     let probe;
     try {
-      probe = await getFaceEmbedding(faceImage);
-    } catch (err) {
-      return res.status(400).json({ error: `Face capture failed: ${err.message}` });
+      probe = await getBestFaceEmbedding(faceImage);
+    } catch {
+      return res.json({ identified: false, reason: "service_unavailable" });
     }
 
-    const match = await identifyByEmbedding(probe);
-    if (!match) {
-      return res.status(404).json({ identified: false });
+    if (!probe.embedding || probe.faces === 0) {
+      return res.json({ identified: false, reason: "no_face" });
+    }
+
+    const match = await identifyByEmbedding(probe.embedding);
+    if (!match.matched) {
+      return res.json({ identified: false, reason: "no_match", score: match.score });
     }
 
     return res.json({

@@ -39,3 +39,7 @@ Thumbs.db
 
 *.log
 logs/
+
+registration-portal/my_image.jpg
+registration-portal/sample.jpeg
+*_image.*

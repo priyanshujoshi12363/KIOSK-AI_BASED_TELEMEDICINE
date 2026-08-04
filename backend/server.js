@@ -1,4 +1,5 @@
 import express from "express";
+import cors from "cors";
 import connectDB from "./src/config/db.js";
 import ashaAuthRoutes from "./src/routes/ashaAuth.routes.js";
 import doctorAuthRoutes from "./src/routes/doctorAuth.routes.js";
@@ -7,6 +8,7 @@ import villagerRoutes from "./src/routes/villager.routes.js";
 const app = express();
 const PORT = process.env.PORT || 4000;
 
+app.use(cors());
 app.use(express.json({ limit: "10mb" }));
 
 app.get("/health", (req, res) => {

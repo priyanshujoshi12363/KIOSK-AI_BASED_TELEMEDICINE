@@ -43,6 +43,11 @@ const villagerSchema = new mongoose.Schema(
       default: undefined,
       select: false,
     },
+    faceEmbeddings: {
+      type: [[Number]],
+      default: undefined,
+      select: false,
+    },
     faceRegistered: {
       type: Boolean,
       default: false,

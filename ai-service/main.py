@@ -29,6 +29,11 @@ class EmbedResponse(BaseModel):
     embedding: list[float]
 
 
+class EmbedBestResponse(BaseModel):
+    faces: int
+    embedding: list[float] | None
+
+
 @app.get("/health", response_model=HealthResponse)
 def health():
     return HealthResponse(status="ok", service="ai-service")
@@ -54,3 +59,14 @@ def face_embed(req: EmbedRequest):
         raise HTTPException(status_code=400, detail="multiple_faces_detected")
 
     return EmbedResponse(faces=1, embedding=embeddings[0])
+
+
+@app.post("/face/embed-best", response_model=EmbedBestResponse)
+def face_embed_best(req: EmbedRequest):
+    try:
+        result = face.embed_best(req.image)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="invalid_image")
+    except Exception:
+        raise HTTPException(status_code=500, detail="embedding_failed")
+    return EmbedBestResponse(faces=result["faces"], embedding=result["embedding"])
