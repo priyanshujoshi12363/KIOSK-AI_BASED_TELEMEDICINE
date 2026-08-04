@@ -43,3 +43,10 @@ logs/
 registration-portal/my_image.jpg
 registration-portal/sample.jpeg
 *_image.*
+
+.gradle/
+local.properties
+*.apk
+*.aab
+.cxx/
+captures/

@@ -1,0 +1,6 @@
+<resources>
+    <style name="Theme.Aarogya" parent="@android:style/Theme.Material.Light.NoActionBar">
+        <item name="android:statusBarColor">#01055B</item>
+        <item name="android:windowBackground">#F6F7FB</item>
+    </style>
+</resources>
