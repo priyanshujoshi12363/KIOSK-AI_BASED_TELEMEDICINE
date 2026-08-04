@@ -1,0 +1,13 @@
+fastapi==0.141.1
+uvicorn[standard]==0.52.1
+python-multipart==0.0.32
+python-dotenv==1.2.2
+requests==2.34.2
+numpy==2.5.1
+opencv-python==5.0.0.93
+pydantic-settings==2.14.2
+onnxruntime==1.28.0
+faster-whisper==1.2.1
+gTTS==2.2.4
+pyttsx3==2.99
+insightface==1.0.1
