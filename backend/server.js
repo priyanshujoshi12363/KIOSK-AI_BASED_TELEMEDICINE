@@ -2,11 +2,12 @@ import express from "express";
 import connectDB from "./src/config/db.js";
 import ashaAuthRoutes from "./src/routes/ashaAuth.routes.js";
 import doctorAuthRoutes from "./src/routes/doctorAuth.routes.js";
+import villagerRoutes from "./src/routes/villager.routes.js";
 
 const app = express();
 const PORT = process.env.PORT || 4000;
 
-app.use(express.json());
+app.use(express.json({ limit: "10mb" }));
 
 app.get("/health", (req, res) => {
   res.json({ status: "ok", service: "backend" });
@@ -18,6 +19,7 @@ app.get("/", (req, res) => {
 
 app.use("/api/asha/auth", ashaAuthRoutes);
 app.use("/api/doctor/auth", doctorAuthRoutes);
+app.use("/api/villager", villagerRoutes);
 
 async function start() {
   await connectDB();
