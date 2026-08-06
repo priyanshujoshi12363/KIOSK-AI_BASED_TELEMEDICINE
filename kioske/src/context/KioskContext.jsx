@@ -3,11 +3,11 @@ import { t as translations } from "../i18n.js";
 
 const KioskContext = createContext(null);
 
-export const STEPS = ["WELCOME", "SCAN", "AGENT", "CONSULT", "DONE"];
+export const STEPS = ["SPLASH", "WELCOME", "SCAN", "AGENT", "CONSULT", "DONE"];
 
 export function KioskProvider({ children }) {
   const [lang, setLang] = useState("hi");
-  const [step, setStep] = useState("WELCOME");
+  const [step, setStep] = useState("SPLASH");
   const [villager, setVillager] = useState(null);
   const [symptoms, setSymptoms] = useState("");
 

@@ -2,12 +2,16 @@ import { useEffect } from "react";
 import { useKiosk } from "../context/KioskContext.jsx";
 import { speechLocale } from "../i18n.js";
 import { speak } from "../lib/speech.js";
+import { preloadWhisper } from "../lib/whisper.js";
+import { warmupOllama } from "../lib/ollama.js";
 import AshokaChakra from "../components/AshokaChakra.jsx";
 
 export default function Welcome() {
   const { t, go } = useKiosk();
 
   useEffect(() => {
+    preloadWhisper();
+    warmupOllama();
     speak(t.introText, speechLocale.hi);
     const timer = setTimeout(() => go("SCAN"), 6500);
     return () => {

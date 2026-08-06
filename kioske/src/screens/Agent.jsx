@@ -1,16 +1,21 @@
 import { useEffect, useRef, useState } from "react";
 import { useKiosk } from "../context/KioskContext.jsx";
 import { agentScript, speechLocale } from "../i18n.js";
-import { speak, listenOnce, getRecognizer } from "../lib/speech.js";
+import { speak } from "../lib/speech.js";
 import { detectLanguage } from "../lib/lang.js";
+import { preloadWhisper, transcribe } from "../lib/whisper.js";
+import { recordUntilSilence } from "../lib/audio.js";
+import { streamAgent, detectRedFlags, warmupOllama } from "../lib/ollama.js";
+
+const MAX_TURNS = 3;
 
 export default function Agent() {
   const { t, setLang, setSymptoms, go, villager } = useKiosk();
   const [messages, setMessages] = useState([]);
-  const [phase, setPhase] = useState("speaking");
+  const [phase, setPhase] = useState("loading");
   const [draft, setDraft] = useState("");
-  const replyResolveRef = useRef(null);
   const startedRef = useRef(false);
+  const typedResolveRef = useRef(null);
   const scrollRef = useRef(null);
 
   useEffect(() => {
@@ -26,62 +31,143 @@ export default function Agent() {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
   }, [messages, phase]);
 
-  async function agentSay(text, locale) {
-    setPhase("speaking");
-    setMessages((m) => [...m, { role: "agent", text }]);
-    await speak(text, speechLocale[locale]);
+  function pushMsg(role, text) {
+    setMessages((m) => [...m, { role, text }]);
   }
 
-  function userReply(locale) {
+  function updateLastAgent(text) {
+    setMessages((m) => {
+      const copy = [...m];
+      for (let i = copy.length - 1; i >= 0; i--) {
+        if (copy[i].role === "agent") {
+          copy[i] = { role: "agent", text };
+          break;
+        }
+      }
+      return copy;
+    });
+  }
+
+  function listenTurn(langHint) {
     setPhase("listening");
     return new Promise((resolve) => {
       let settled = false;
       const finish = (text) => {
         if (settled) return;
         settled = true;
-        replyResolveRef.current = null;
-        const clean = (text || "").trim();
-        if (clean) setMessages((m) => [...m, { role: "user", text: clean }]);
-        resolve(clean);
+        typedResolveRef.current = null;
+        resolve((text || "").trim());
       };
-      replyResolveRef.current = finish;
-      listenOnce(speechLocale[locale])
-        .then((txt) => finish(txt))
-        .catch(() => {});
+      typedResolveRef.current = finish;
+      (async () => {
+        try {
+          const { audio } = await recordUntilSilence();
+          if (settled) return;
+          if (!audio) return finish("");
+          setPhase("thinking");
+          const text = await transcribe(audio, langHint);
+          finish(text);
+        } catch {
+          finish("");
+        }
+      })();
     });
   }
 
-  function submitDraft() {
-    const text = draft.trim();
-    if (!text) return;
-    setDraft("");
-    if (replyResolveRef.current) replyResolveRef.current(text);
+  function submitTyped() {
+    const v = draft.trim();
+    if (v && typedResolveRef.current) {
+      setDraft("");
+      typedResolveRef.current(v);
+    }
+  }
+
+  async function speakReply(text, locale) {
+    setPhase("speaking");
+    await speak(text, locale);
+  }
+
+  async function streamReply(llm) {
+    setPhase("thinking");
+    pushMsg("agent", "");
+    let acc = "";
+    for await (const chunk of streamAgent(llm)) {
+      acc += chunk;
+      updateLastAgent(acc);
+    }
+    return acc.trim();
   }
 
   async function run() {
+    preloadWhisper();
+    warmupOllama();
+
+    const llm = [];
+    const answers = [];
     let lang = "hi";
-    await agentSay(agentScript.hi[0], "hi");
-    const a0 = await userReply("hi");
-    lang = detectLanguage(a0);
-    setLang(lang);
 
-    await agentSay(agentScript[lang][1], lang);
-    const a1 = await userReply(lang);
+    const greeting = agentScript.hi[0];
+    pushMsg("agent", greeting);
+    await speakReply(greeting, speechLocale.hi);
+    llm.push({ role: "assistant", content: greeting });
 
-    await agentSay(agentScript[lang][2], lang);
-    const a2 = await userReply(lang);
+    for (let turn = 0; turn < MAX_TURNS; turn++) {
+      let userText = await listenTurn(turn === 0 ? null : lang);
+      if (!userText) userText = await listenTurn(turn === 0 ? null : lang);
+      if (!userText) continue;
 
-    setSymptoms([a0, a1, a2].filter(Boolean).join(". "));
-    await agentSay(agentScript[lang][3], lang);
+      lang = detectLanguage(userText);
+      setLang(lang);
+      pushMsg("user", userText);
+      llm.push({ role: "user", content: userText });
+      answers.push(userText);
 
+      if (detectRedFlags(userText).length) {
+        setSymptoms(answers.join(". "));
+        setPhase("emergency");
+        const em =
+          lang === "hi"
+            ? "यह गंभीर हो सकता है। मैं तुरंत डॉक्टर से जोड़ रहा हूँ।"
+            : "This may be serious. Connecting you to a doctor immediately.";
+        pushMsg("agent", em);
+        await speak(em, speechLocale[lang]);
+        setTimeout(() => go("CONSULT"), 1400);
+        return;
+      }
+
+      if (turn < MAX_TURNS - 1) {
+        const reply = await streamReply(llm);
+        llm.push({ role: "assistant", content: reply });
+        await speakReply(reply, speechLocale[detectLanguage(reply)]);
+      }
+    }
+
+    setSymptoms(answers.join(". "));
+    const closing =
+      lang === "hi"
+        ? "धन्यवाद। मैं अब आपको डॉक्टर से जोड़ रहा हूँ।"
+        : "Thank you. Connecting you to a doctor now.";
+    pushMsg("agent", closing);
+    await speakReply(closing, speechLocale[lang]);
     setPhase("done");
     setTimeout(() => go("CONSULT"), 1400);
   }
 
-  const hasStt = !!getRecognizer();
+  const statusLabel =
+    phase === "loading"
+      ? "…"
+      : phase === "speaking"
+        ? t.speakingLabel
+        : phase === "listening"
+          ? t.listeningLabel
+          : phase === "thinking"
+            ? "…"
+            : phase === "emergency"
+              ? "!"
+              : "";
 
   return (
-    <div className="flex h-[70vh] flex-col">
+    <div className="flex h-[72vh] flex-col">
       <div className="mb-4 flex items-center gap-3">
         <div className="flex h-12 w-12 items-center justify-center rounded-full bg-navy/10 text-2xl">
           🩺
@@ -100,12 +186,10 @@ export default function Agent() {
           <div key={i} className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}>
             <div
               className={`max-w-[80%] rounded-2xl px-4 py-3 text-lg ${
-                m.role === "user"
-                  ? "bg-saffron text-zinc-950"
-                  : "bg-zinc-100 text-zinc-800"
+                m.role === "user" ? "bg-saffron text-zinc-950" : "bg-zinc-100 text-zinc-800"
               }`}
             >
-              {m.text}
+              {m.text || "…"}
             </div>
           </div>
         ))}
@@ -113,17 +197,20 @@ export default function Agent() {
 
       <div className="mt-4">
         <div className="mb-3 flex items-center justify-center gap-3">
-          {phase === "speaking" && (
-            <span className="flex items-center gap-2 text-navy">
-              <span className="h-3 w-3 animate-pulse rounded-full bg-navy" />
-              <span className="font-semibold">{t.speakingLabel}</span>
-            </span>
-          )}
           {phase === "listening" && (
             <span className="flex items-center gap-2 text-red-500">
               <span className="h-3 w-3 animate-ping rounded-full bg-red-500" />
-              <span className="font-semibold">{t.listeningLabel}</span>
+              <span className="font-semibold">{statusLabel}</span>
             </span>
+          )}
+          {(phase === "speaking" || phase === "thinking" || phase === "loading") && (
+            <span className="flex items-center gap-2 text-navy">
+              <span className="h-3 w-3 animate-pulse rounded-full bg-navy" />
+              <span className="font-semibold">{statusLabel}</span>
+            </span>
+          )}
+          {phase === "emergency" && (
+            <span className="font-semibold text-red-600">⚠ Emergency</span>
           )}
         </div>
 
@@ -131,24 +218,19 @@ export default function Agent() {
           <input
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && submitDraft()}
+            onKeyDown={(e) => e.key === "Enter" && submitTyped()}
             placeholder={t.typeAnswer}
             disabled={phase !== "listening"}
             className="flex-1 rounded-xl border-2 border-zinc-200 bg-white px-4 py-3 text-lg text-zinc-900 outline-none focus:border-saffron disabled:bg-zinc-50"
           />
           <button
-            onClick={submitDraft}
+            onClick={submitTyped}
             disabled={phase !== "listening" || !draft.trim()}
             className="rounded-xl bg-saffron px-6 py-3 text-lg font-bold text-zinc-950 disabled:opacity-40"
           >
             {t.send}
           </button>
         </div>
-        {!hasStt && (
-          <p className="mt-2 text-center text-xs text-zinc-400">
-            Voice input not supported in this browser — please type your answer.
-          </p>
-        )}
       </div>
     </div>
   );
