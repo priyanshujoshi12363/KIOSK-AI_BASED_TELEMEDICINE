@@ -1,6 +1,6 @@
-export default function TricolorBar({ className = "" }) {
+export default function TricolorBar({ className = "", height = 6 }) {
   return (
-    <div className={`flex h-1.5 w-full ${className}`}>
+    <div className={`flex w-full ${className}`} style={{ height }}>
       <div className="flex-1 bg-saffron" />
       <div className="flex-1 bg-white" />
       <div className="flex-1 bg-indiagreen" />

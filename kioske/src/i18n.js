@@ -8,6 +8,11 @@ export const t = {
   en: {
     brand: "Aarogya Kiosk",
     tagline: "Government of Kerala · Tele-medicine",
+    welcomeTitle: "Welcome",
+    standInFront: "Please step in front of the camera to begin",
+    lookingForYou: "Looking for you…",
+    welcomeSpoken:
+      "Welcome to the tele-medicine service. First, let me take your biometric. Please look at the camera.",
     introTitle: "Welcome to Aarogya Kiosk",
     introText:
       "A free tele-medicine kiosk for your village. Just show your face to begin — an assistant will ask about your health and connect you to an expert doctor.",
@@ -34,6 +39,11 @@ export const t = {
   hi: {
     brand: "आरोग्य कियोस्क",
     tagline: "केरल सरकार · टेली-मेडिसिन",
+    welcomeTitle: "स्वागत है",
+    standInFront: "शुरू करने के लिए कैमरे के सामने आएं",
+    lookingForYou: "आपको खोज रहे हैं…",
+    welcomeSpoken:
+      "टेलीमेडिसिन सेवा में आपका स्वागत है। पहले मैं आपका बायोमेट्रिक लेता हूँ। कृपया कैमरे की ओर देखें।",
     introTitle: "आरोग्य कियोस्क में आपका स्वागत है",
     introText:
       "यह आपके गाँव के लिए एक निःशुल्क टेली-मेडिसिन कियोस्क है। शुरू करने के लिए बस अपना चेहरा दिखाएँ — सहायक आपकी सेहत के बारे में पूछेगा और विशेषज्ञ डॉक्टर से जोड़ेगा।",
@@ -60,6 +70,11 @@ export const t = {
   ml: {
     brand: "ആരോഗ്യ കിയോസ്ക്",
     tagline: "കേരള സർക്കാർ · ടെലി-മെഡിസിൻ",
+    welcomeTitle: "സ്വാഗതം",
+    standInFront: "ആരംഭിക്കാൻ ക്യാമറയ്ക്ക് മുന്നിൽ വരൂ",
+    lookingForYou: "നിങ്ങളെ തിരയുന്നു…",
+    welcomeSpoken:
+      "ടെലിമെഡിസിൻ സേവനത്തിലേക്ക് സ്വാഗതം. ആദ്യം ഞാൻ നിങ്ങളുടെ ബയോമെട്രിക് എടുക്കട്ടെ. ദയവായി ക്യാമറയിലേക്ക് നോക്കൂ.",
     introTitle: "ആരോഗ്യ കിയോസ്കിലേക്ക് സ്വാഗതം",
     introText:
       "ഇത് നിങ്ങളുടെ ഗ്രാമത്തിനായുള്ള ഒരു സൗജന്യ ടെലി-മെഡിസിൻ കിയോസ്ക് ആണ്. ആരംഭിക്കാൻ നിങ്ങളുടെ മുഖം കാണിക്കുക — സഹായി നിങ്ങളുടെ ആരോഗ്യത്തെക്കുറിച്ച് ചോദിക്കുകയും വിദഗ്ധ ഡോക്ടറുമായി ബന്ധിപ്പിക്കുകയും ചെയ്യും.",

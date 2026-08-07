@@ -20,10 +20,13 @@ body,
 body {
   margin: 0;
   font-family: var(--font-sans);
-  background: radial-gradient(circle at 50% 0%, #f4f7ff 0%, #ffffff 55%);
-  color: #18181b;
+  color: #16181f;
   -webkit-font-smoothing: antialiased;
-  overflow: hidden;
+  background:
+    radial-gradient(1100px 620px at 12% -8%, rgba(255, 153, 51, 0.14), transparent 60%),
+    radial-gradient(1000px 620px at 105% 112%, rgba(19, 136, 8, 0.14), transparent 60%),
+    radial-gradient(900px 700px at 50% 45%, rgba(1, 5, 91, 0.06), transparent 70%),
+    #f5f7fc;
 }
 
 .lang-hi {
@@ -33,13 +36,24 @@ body {
   font-family: "Noto Sans Malayalam", "Inter", sans-serif;
 }
 
+::-webkit-scrollbar {
+  width: 8px;
+}
+::-webkit-scrollbar-thumb {
+  background: #cbd2e0;
+  border-radius: 8px;
+}
+
 @keyframes spin-slow {
   to {
     transform: rotate(360deg);
   }
 }
 .animate-spin-slow {
-  animation: spin-slow 24s linear infinite;
+  animation: spin-slow 22s linear infinite;
+}
+.animate-spin-ring {
+  animation: spin-slow 7s linear infinite;
 }
 
 @keyframes fade-in {
@@ -53,16 +67,16 @@ body {
   }
 }
 .animate-fade-in {
-  animation: fade-in 0.45s ease both;
+  animation: fade-in 0.5s ease both;
 }
 
 @keyframes pulse-ring {
   0% {
-    transform: scale(0.95);
+    transform: scale(0.92);
     opacity: 0.7;
   }
   70% {
-    transform: scale(1.1);
+    transform: scale(1.12);
     opacity: 0;
   }
   100% {
@@ -71,4 +85,51 @@ body {
 }
 .pulse-ring {
   animation: pulse-ring 1.8s cubic-bezier(0.2, 0.6, 0.3, 1) infinite;
+}
+
+@keyframes glow {
+  0%,
+  100% {
+    filter: drop-shadow(0 0 14px rgba(255, 153, 51, 0.35));
+  }
+  50% {
+    filter: drop-shadow(0 0 30px rgba(255, 153, 51, 0.65));
+  }
+}
+.animate-glow {
+  animation: glow 3s ease-in-out infinite;
+}
+
+@keyframes float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-8px);
+  }
+}
+.animate-float {
+  animation: float 5s ease-in-out infinite;
+}
+
+.tricolor-conic {
+  background: conic-gradient(
+    from 0deg,
+    #ff9933,
+    #ffd9b3,
+    #ffffff,
+    #b7e0b0,
+    #138808,
+    #b7e0b0,
+    #ffffff,
+    #ffd9b3,
+    #ff9933
+  );
+}
+
+.glass {
+  background: rgba(255, 255, 255, 0.72);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.6);
 }

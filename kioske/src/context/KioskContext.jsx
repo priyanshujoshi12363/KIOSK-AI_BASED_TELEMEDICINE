@@ -14,7 +14,7 @@ export function KioskProvider({ children }) {
   const go = useCallback((next) => setStep(next), []);
 
   const reset = useCallback(() => {
-    setStep("WELCOME");
+    setStep("SPLASH");
     setVillager(null);
     setSymptoms("");
     setLang("hi");

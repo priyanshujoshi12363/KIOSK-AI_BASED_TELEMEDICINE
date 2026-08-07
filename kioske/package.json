@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "@huggingface/transformers": "^4.2.0",
+    "kokoro-js": "^1.2.1",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
     "react-webcam": "^7.2.0"

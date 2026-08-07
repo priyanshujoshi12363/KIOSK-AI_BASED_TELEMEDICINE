@@ -1,43 +1,88 @@
-import { useEffect } from "react";
+import { useEffect, useRef, useState } from "react";
+import Webcam from "react-webcam";
 import { useKiosk } from "../context/KioskContext.jsx";
 import { speechLocale } from "../i18n.js";
 import { speak } from "../lib/speech.js";
-import { preloadWhisper } from "../lib/whisper.js";
-import { warmupOllama } from "../lib/ollama.js";
-import AshokaChakra from "../components/AshokaChakra.jsx";
+import { identifyVillager } from "../lib/api.js";
+import TricolorRing from "../components/TricolorRing.jsx";
 
 export default function Welcome() {
   const { t, go } = useKiosk();
+  const webcamRef = useRef(null);
+  const busyRef = useRef(false);
+  const phaseRef = useRef("waiting");
+  const [phase, setPhase] = useState("waiting");
 
   useEffect(() => {
-    preloadWhisper();
-    warmupOllama();
-    speak(t.introText, speechLocale.hi);
-    const timer = setTimeout(() => go("SCAN"), 6500);
+    speak(t.standInFront, speechLocale.hi);
+  }, [t.standInFront]);
+
+  useEffect(() => {
+    const id = setInterval(async () => {
+      if (busyRef.current || phaseRef.current !== "waiting") return;
+      const shot = webcamRef.current?.getScreenshot();
+      if (!shot) return;
+      busyRef.current = true;
+      try {
+        const res = await identifyVillager(shot);
+        const facePresent = res.identified === true || res.reason === "no_match";
+        if (facePresent && phaseRef.current === "waiting") {
+          phaseRef.current = "greeting";
+          setPhase("greeting");
+          clearInterval(id);
+          await speak(t.welcomeSpoken, speechLocale.hi);
+          go("SCAN");
+        }
+      } catch {
+        // keep waiting
+      } finally {
+        busyRef.current = false;
+      }
+    }, 1800);
     return () => {
-      clearTimeout(timer);
+      clearInterval(id);
       if (window.speechSynthesis) window.speechSynthesis.cancel();
     };
-  }, [go, t.introText]);
+  }, [go, t.welcomeSpoken]);
 
   return (
-    <div className="text-center">
-      <div className="mx-auto mb-8 flex h-28 w-28 items-center justify-center rounded-full bg-gradient-to-br from-saffron/20 to-indiagreen/20 text-navy">
-        <AshokaChakra size={72} spin />
+    <div className="flex flex-col items-center text-center">
+      <span className="mb-8 inline-flex items-center gap-2 rounded-full border border-zinc-200 bg-white/70 px-4 py-1.5 text-xs font-semibold text-navy shadow-sm">
+        <span className="h-2 w-2 rounded-full bg-indiagreen" />
+        {t.tagline}
+      </span>
+
+      <div className="relative mb-9">
+        {phase === "greeting" && (
+          <span className="pulse-ring absolute inset-0 rounded-full border-4 border-indiagreen" />
+        )}
+        <TricolorRing size={220} thickness={8}>
+          <Webcam
+            ref={webcamRef}
+            audio={false}
+            screenshotFormat="image/jpeg"
+            mirrored
+            className="h-full w-full object-cover"
+            videoConstraints={{ facingMode: "user" }}
+          />
+        </TricolorRing>
       </div>
-      <h1 className="text-4xl font-black tracking-tight text-zinc-900">{t.introTitle}</h1>
-      <p className="mx-auto mt-5 max-w-2xl text-xl leading-relaxed text-zinc-500">
-        {t.introText}
+
+      <h1 className="text-6xl font-black tracking-tight text-zinc-900">{t.welcomeTitle}</h1>
+      <p className="mt-5 max-w-xl text-xl leading-relaxed text-zinc-500">
+        {phase === "greeting" ? t.welcomeSpoken : t.standInFront}
       </p>
 
-      <div className="mt-10 flex items-center justify-center gap-2 text-saffron">
-        <span className="h-2.5 w-2.5 animate-bounce rounded-full bg-saffron [animation-delay:-0.3s]" />
-        <span className="h-2.5 w-2.5 animate-bounce rounded-full bg-saffron [animation-delay:-0.15s]" />
-        <span className="h-2.5 w-2.5 animate-bounce rounded-full bg-saffron" />
+      <div className="mt-8 inline-flex items-center gap-3 rounded-full bg-white/70 px-5 py-2.5 shadow-sm">
+        <span
+          className={`h-3 w-3 rounded-full ${
+            phase === "greeting" ? "bg-indiagreen" : "animate-ping bg-saffron"
+          }`}
+        />
+        <span className="text-sm font-semibold uppercase tracking-widest text-zinc-500">
+          {phase === "greeting" ? t.speakingLabel : t.lookingForYou}
+        </span>
       </div>
-      <p className="mt-4 text-sm font-medium uppercase tracking-widest text-zinc-400">
-        {t.starting}
-      </p>
     </div>
   );
 }

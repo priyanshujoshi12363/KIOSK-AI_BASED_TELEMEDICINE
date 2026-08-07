@@ -169,24 +169,33 @@ export default function Agent() {
   return (
     <div className="flex h-[72vh] flex-col">
       <div className="mb-4 flex items-center gap-3">
-        <div className="flex h-12 w-12 items-center justify-center rounded-full bg-navy/10 text-2xl">
+        <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-navy to-[#2a2f7a] text-2xl shadow-md">
           🩺
         </div>
         <div>
           <div className="font-bold text-zinc-900">AI Health Assistant</div>
-          <div className="text-xs text-zinc-500">{villager?.name}</div>
+          <div className="text-xs font-medium text-zinc-500">{villager?.name}</div>
+        </div>
+        <div className="ml-auto h-1.5 w-24 overflow-hidden rounded-full">
+          <div className="flex h-full">
+            <div className="flex-1 bg-saffron" />
+            <div className="flex-1 bg-white" />
+            <div className="flex-1 bg-indiagreen" />
+          </div>
         </div>
       </div>
 
       <div
         ref={scrollRef}
-        className="flex-1 space-y-3 overflow-y-auto rounded-2xl border border-zinc-200 bg-white/70 p-5"
+        className="glass flex-1 space-y-3 overflow-y-auto rounded-3xl p-5 shadow-sm"
       >
         {messages.map((m, i) => (
           <div key={i} className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}>
             <div
-              className={`max-w-[80%] rounded-2xl px-4 py-3 text-lg ${
-                m.role === "user" ? "bg-saffron text-zinc-950" : "bg-zinc-100 text-zinc-800"
+              className={`max-w-[80%] rounded-2xl px-4 py-3 text-lg shadow-sm ${
+                m.role === "user"
+                  ? "bg-gradient-to-br from-saffron to-[#ff8a1f] text-zinc-950"
+                  : "border border-zinc-200 bg-white text-zinc-800"
               }`}
             >
               {m.text || "…"}
@@ -221,12 +230,12 @@ export default function Agent() {
             onKeyDown={(e) => e.key === "Enter" && submitTyped()}
             placeholder={t.typeAnswer}
             disabled={phase !== "listening"}
-            className="flex-1 rounded-xl border-2 border-zinc-200 bg-white px-4 py-3 text-lg text-zinc-900 outline-none focus:border-saffron disabled:bg-zinc-50"
+            className="flex-1 rounded-2xl border-2 border-zinc-200 bg-white/80 px-5 py-3.5 text-lg text-zinc-900 shadow-sm outline-none transition focus:border-saffron focus:ring-2 focus:ring-saffron/25 disabled:bg-zinc-50"
           />
           <button
             onClick={submitTyped}
             disabled={phase !== "listening" || !draft.trim()}
-            className="rounded-xl bg-saffron px-6 py-3 text-lg font-bold text-zinc-950 disabled:opacity-40"
+            className="rounded-2xl bg-gradient-to-br from-saffron to-[#ff8a1f] px-7 py-3.5 text-lg font-bold text-zinc-950 shadow-sm transition hover:brightness-105 disabled:opacity-40"
           >
             {t.send}
           </button>

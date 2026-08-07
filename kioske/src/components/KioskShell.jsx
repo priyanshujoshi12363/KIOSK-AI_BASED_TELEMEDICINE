@@ -1,36 +1,42 @@
 import TricolorBar from "./TricolorBar.jsx";
 import AshokaChakra from "./AshokaChakra.jsx";
-import { useKiosk, STEPS } from "../context/KioskContext.jsx";
+import KioskBackground from "./KioskBackground.jsx";
+import { useKiosk } from "../context/KioskContext.jsx";
 import { languages } from "../i18n.js";
+
+const FLOW = ["SCAN", "AGENT", "CONSULT", "DONE"];
 
 export default function KioskShell({ children }) {
   const { t, lang, step, reset } = useKiosk();
   const langClass = lang === "hi" ? "lang-hi" : lang === "ml" ? "lang-ml" : "";
-  const stepIndex = STEPS.indexOf(step);
+  const flowIndex = FLOW.indexOf(step);
   const activeLang = languages.find((l) => l.code === lang);
 
   return (
     <div className={`flex h-full flex-col ${langClass}`}>
-      <TricolorBar />
-      <header className="flex items-center justify-between border-b border-zinc-200 bg-white/70 px-6 py-4 backdrop-blur">
+      <KioskBackground />
+      <TricolorBar height={5} />
+      <header className="glass flex items-center justify-between border-b border-white/40 px-6 py-3.5 shadow-sm">
         <div className="flex items-center gap-3">
-          <AshokaChakra size={44} className="text-navy" />
+          <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-navy to-[#2a2f7a] shadow-md">
+            <AshokaChakra size={26} className="text-white" spin />
+          </div>
           <div className="leading-tight">
-            <div className="text-lg font-extrabold text-zinc-900">{t.brand}</div>
-            <div className="text-xs text-zinc-500">{t.tagline}</div>
+            <div className="text-lg font-extrabold tracking-tight text-zinc-900">{t.brand}</div>
+            <div className="text-[11px] font-medium text-zinc-500">{t.tagline}</div>
           </div>
         </div>
 
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-3">
           {step !== "WELCOME" && (
-            <span className="rounded-full border border-zinc-200 bg-white px-3 py-1 text-sm font-semibold text-zinc-700">
+            <span className="rounded-full border border-zinc-200 bg-white/80 px-3 py-1 text-sm font-semibold text-navy shadow-sm">
               {activeLang?.native}
             </span>
           )}
           {step !== "WELCOME" && (
             <button
               onClick={reset}
-              className="rounded-full border border-zinc-300 px-4 py-1.5 text-sm font-medium text-zinc-600 hover:bg-zinc-100"
+              className="rounded-full border border-zinc-300 bg-white/70 px-4 py-1.5 text-sm font-medium text-zinc-600 transition hover:bg-white hover:text-zinc-900"
             >
               {t.home}
             </button>
@@ -38,13 +44,17 @@ export default function KioskShell({ children }) {
         </div>
       </header>
 
-      {stepIndex > 0 && (
-        <div className="flex justify-center gap-2 bg-white/40 py-3">
-          {STEPS.slice(1).map((s, i) => (
+      {flowIndex >= 0 && (
+        <div className="flex justify-center gap-2 py-3.5">
+          {FLOW.map((s, i) => (
             <span
               key={s}
-              className={`h-2 rounded-full transition-all ${
-                i + 1 <= stepIndex ? "w-10 bg-saffron" : "w-6 bg-zinc-200"
+              className={`h-2 rounded-full transition-all duration-500 ${
+                i < flowIndex
+                  ? "w-8 bg-indiagreen"
+                  : i === flowIndex
+                    ? "w-12 bg-saffron"
+                    : "w-6 bg-zinc-200"
               }`}
             />
           ))}
@@ -55,7 +65,7 @@ export default function KioskShell({ children }) {
         <div className="w-full max-w-3xl animate-fade-in">{children}</div>
       </main>
 
-      <TricolorBar />
+      <TricolorBar height={5} />
     </div>
   );
 }

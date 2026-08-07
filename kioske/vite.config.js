@@ -9,7 +9,7 @@ export default defineConfig({
     port: 5174,
   },
   optimizeDeps: {
-    exclude: ["@huggingface/transformers"],
+    exclude: ["@huggingface/transformers", "kokoro-js"],
   },
   build: {
     target: "esnext",

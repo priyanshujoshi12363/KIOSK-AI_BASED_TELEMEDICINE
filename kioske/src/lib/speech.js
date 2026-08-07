@@ -1,14 +1,63 @@
-export function speak(text, locale) {
+import { KokoroTTS } from "kokoro-js";
+
+const VOICES = { hi: "hf_alpha", en: "af_heart" };
+
+let ttsPromise = null;
+let audioCtx = null;
+
+function langFromLocale(locale) {
+  const p = (locale || "hi").slice(0, 2);
+  return VOICES[p] ? p : "hi";
+}
+
+function getTTS() {
+  if (!ttsPromise) {
+    ttsPromise = KokoroTTS.from_pretrained("onnx-community/Kokoro-82M-v1.0-ONNX", {
+      dtype: "q8",
+      device: "wasm",
+    });
+  }
+  return ttsPromise;
+}
+
+export function preloadTTS() {
+  getTTS();
+}
+
+function getCtx() {
+  if (!audioCtx) {
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  }
+  if (audioCtx.state === "suspended") {
+    audioCtx.resume();
+  }
+  return audioCtx;
+}
+
+function playPCM(float32, sampleRate) {
   return new Promise((resolve) => {
-    if (typeof window === "undefined" || !window.speechSynthesis) {
+    try {
+      const ctx = getCtx();
+      const data = float32 instanceof Float32Array ? float32 : Float32Array.from(float32);
+      const buffer = ctx.createBuffer(1, data.length, sampleRate);
+      buffer.copyToChannel(data, 0);
+      const src = ctx.createBufferSource();
+      src.buffer = buffer;
+      src.connect(ctx.destination);
+      src.onended = () => resolve();
+      src.start();
+    } catch {
       resolve();
-      return;
     }
+  });
+}
+
+function fallbackSpeak(text, locale) {
+  return new Promise((resolve) => {
+    if (!window.speechSynthesis) return resolve();
     window.speechSynthesis.cancel();
     const u = new SpeechSynthesisUtterance(text);
-    u.lang = locale;
-    u.rate = 0.95;
-    u.pitch = 1;
+    u.lang = locale || "hi-IN";
     u.onend = () => resolve();
     u.onerror = () => resolve();
     window.speechSynthesis.speak(u);
@@ -16,30 +65,14 @@ export function speak(text, locale) {
   });
 }
 
-export function getRecognizer() {
-  const SR =
-    typeof window !== "undefined" &&
-    (window.SpeechRecognition || window.webkitSpeechRecognition);
-  return SR || null;
-}
-
-export function listenOnce(locale) {
-  return new Promise((resolve, reject) => {
-    const SR = getRecognizer();
-    if (!SR) {
-      reject(new Error("no-stt"));
-      return;
-    }
-    const rec = new SR();
-    rec.lang = locale;
-    rec.interimResults = false;
-    rec.maxAlternatives = 1;
-    rec.onresult = (e) => resolve(e.results[0][0].transcript);
-    rec.onerror = (e) => reject(new Error(e.error || "stt-error"));
-    try {
-      rec.start();
-    } catch {
-      reject(new Error("stt-start-failed"));
-    }
-  });
+export async function speak(text, locale) {
+  if (!text) return;
+  const lang = langFromLocale(locale);
+  try {
+    const tts = await getTTS();
+    const out = await tts.generate(text, { voice: VOICES[lang] });
+    await playPCM(out.audio, out.sampling_rate);
+  } catch {
+    await fallbackSpeak(text, locale);
+  }
 }

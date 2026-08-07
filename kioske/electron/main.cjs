@@ -3,6 +3,8 @@ const { spawn } = require("child_process");
 const http = require("http");
 const path = require("path");
 
+app.commandLine.appendSwitch("autoplay-policy", "no-user-gesture-required");
+
 const startUrl = process.env.ELECTRON_START_URL;
 const isDev = !!startUrl;
 
