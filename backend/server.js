@@ -1,9 +1,14 @@
 import express from "express";
 import cors from "cors";
+import http from "http";
 import connectDB from "./src/config/db.js";
+import { initSignaling } from "./src/signaling.js";
 import ashaAuthRoutes from "./src/routes/ashaAuth.routes.js";
 import doctorAuthRoutes from "./src/routes/doctorAuth.routes.js";
 import villagerRoutes from "./src/routes/villager.routes.js";
+import sessionRoutes from "./src/routes/session.routes.js";
+import prescriptionRoutes from "./src/routes/prescription.routes.js";
+import deliveryRoutes from "./src/routes/delivery.routes.js";
 
 const app = express();
 const PORT = process.env.PORT || 4000;
@@ -22,10 +27,16 @@ app.get("/", (req, res) => {
 app.use("/api/asha/auth", ashaAuthRoutes);
 app.use("/api/doctor/auth", doctorAuthRoutes);
 app.use("/api/villager", villagerRoutes);
+app.use("/api/session", sessionRoutes);
+app.use("/api/prescription", prescriptionRoutes);
+app.use("/api/asha/deliveries", deliveryRoutes);
+
+const server = http.createServer(app);
+initSignaling(server);
 
 async function start() {
   await connectDB();
-  app.listen(PORT, () => {
+  server.listen(PORT, () => {
     console.log(`Backend running on http://localhost:${PORT}`);
   });
 }

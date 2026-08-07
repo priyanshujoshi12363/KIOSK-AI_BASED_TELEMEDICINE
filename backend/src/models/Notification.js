@@ -26,6 +26,14 @@ const notificationSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: "Villager",
     },
+    session: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "ConsultationSession",
+    },
+    prescription: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Prescription",
+    },
     type: {
       type: String,
       enum: Object.values(NotificationType),

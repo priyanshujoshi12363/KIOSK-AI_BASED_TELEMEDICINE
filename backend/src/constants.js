@@ -38,3 +38,22 @@ export const NotificationPriority = {
   HIGH: "HIGH",
   URGENT: "URGENT",
 };
+
+export const ConsultationStatus = {
+  QUEUED: "QUEUED",
+  IN_CONSULT: "IN_CONSULT",
+  PRESCRIBED: "PRESCRIBED",
+  DISPENSED: "DISPENSED",
+  CANCELLED: "CANCELLED",
+};
+
+export const Urgency = {
+  NORMAL: "NORMAL",
+  URGENT: "URGENT",
+  EMERGENCY: "EMERGENCY",
+};
+
+export const PrescriptionStatus = {
+  DRAFT: "DRAFT",
+  CONFIRMED: "CONFIRMED",
+};
