@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+    <title>Aarogya Video Consult</title>
+    <style>
+      * { margin: 0; box-sizing: border-box; }
+      html, body { height: 100%; background: #15171f; overflow: hidden; font-family: sans-serif; }
+      #remote { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; background: #15171f; }
+      #local { position: absolute; top: 16px; right: 16px; width: 110px; height: 150px; object-fit: cover; border-radius: 12px; border: 2px solid #fff; background: #000; }
+      #status { position: absolute; top: 16px; left: 16px; color: #fff; background: rgba(0,0,0,.4); padding: 6px 12px; border-radius: 8px; font-size: 13px; }
+      .bar { position: absolute; top: 0; left: 0; right: 0; height: 5px; display: flex; }
+      .bar > div { flex: 1; } .s { background: #ff9933; } .w { background: #fff; } .g { background: #138808; }
+    </style>
+  </head>
+  <body>
+    <div class="bar"><div class="s"></div><div class="w"></div><div class="g"></div></div>
+    <video id="remote" autoplay playsinline></video>
+    <video id="local" autoplay playsinline muted></video>
+    <div id="status">Connecting…</div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+      const params = new URLSearchParams(location.search);
+      const sessionId = params.get("session");
+      const role = params.get("role") || "peer";
+      const statusEl = document.getElementById("status");
+      const remote = document.getElementById("remote");
+      const local = document.getElementById("local");
+
+      const socket = io();
+      const pc = new RTCPeerConnection({
+        iceServers: [{ urls: "stun:stun.l.google.com:19302" }],
+      });
+
+      pc.ontrack = (e) => {
+        remote.srcObject = e.streams[0];
+        statusEl.textContent = "Connected";
+      };
+      pc.onicecandidate = (e) => {
+        if (e.candidate) socket.emit("signal", { sessionId, data: { candidate: e.candidate } });
+      };
+      pc.onconnectionstatechange = () => {
+        if (pc.connectionState === "connected") statusEl.textContent = "Connected";
+        if (pc.connectionState === "disconnected" || pc.connectionState === "failed")
+          statusEl.textContent = "Call ended";
+      };
+
+      async function start() {
+        try {
+          const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+          local.srcObject = stream;
+          stream.getTracks().forEach((t) => pc.addTrack(t, stream));
+        } catch {
+          statusEl.textContent = "Camera/mic blocked";
+        }
+        socket.emit("join", { sessionId, role });
+        statusEl.textContent = "Waiting for the other person…";
+      }
+
+      socket.on("peer-joined", async () => {
+        const offer = await pc.createOffer();
+        await pc.setLocalDescription(offer);
+        socket.emit("signal", { sessionId, data: { sdp: pc.localDescription } });
+      });
+
+      socket.on("signal", async ({ data }) => {
+        if (data.sdp) {
+          await pc.setRemoteDescription(new RTCSessionDescription(data.sdp));
+          if (data.sdp.type === "offer") {
+            const answer = await pc.createAnswer();
+            await pc.setLocalDescription(answer);
+            socket.emit("signal", { sessionId, data: { sdp: pc.localDescription } });
+          }
+        } else if (data.candidate) {
+          try {
+            await pc.addIceCandidate(new RTCIceCandidate(data.candidate));
+          } catch {}
+        }
+      });
+
+      socket.on("peer-left", () => {
+        statusEl.textContent = "The other person left";
+      });
+
+      start();
+    </script>
+  </body>
+</html>

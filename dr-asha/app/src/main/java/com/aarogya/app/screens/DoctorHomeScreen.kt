@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -14,12 +15,14 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Logout
+import androidx.compose.material.icons.automirrored.filled.Logout
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Videocam
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -29,46 +32,75 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.aarogya.app.data.Consultation
-import com.aarogya.app.data.ConsultStatus
-import com.aarogya.app.data.MockData
+import com.aarogya.app.data.SessionStore
+import com.aarogya.app.data.remote.ApiClient
+import com.aarogya.app.data.remote.SessionDto
 import com.aarogya.app.ui.components.InitialsAvatar
 import com.aarogya.app.ui.components.Pill
 import com.aarogya.app.ui.components.TricolorStrip
-import com.aarogya.app.ui.theme.NavySoft
 import com.aarogya.app.ui.theme.Navy
-import com.aarogya.app.ui.theme.Saffron
-import com.aarogya.app.ui.theme.StatusAmber
 import com.aarogya.app.ui.theme.StatusGreen
 import com.aarogya.app.ui.theme.StatusRed
 import com.aarogya.app.ui.theme.TextSecondary
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun DoctorHomeScreen(onStartCall: () -> Unit, onLogout: () -> Unit) {
+fun DoctorHomeScreen(onOpenConsult: (String) -> Unit, onLogout: () -> Unit) {
+    val scope = rememberCoroutineScope()
+    val queue = remember { mutableStateListOf<SessionDto>() }
+    var loading by remember { mutableStateOf(true) }
+    var error by remember { mutableStateOf<String?>(null) }
+    var claimingId by remember { mutableStateOf<String?>(null) }
+
+    suspend fun load() {
+        loading = true
+        error = null
+        try {
+            val r = ApiClient.service.getQueue()
+            queue.clear()
+            queue.addAll(r.sessions)
+        } catch (e: Exception) {
+            error = "Could not load patient queue"
+        } finally {
+            loading = false
+        }
+    }
+
+    LaunchedEffect(Unit) { load() }
+
     Scaffold(
         topBar = {
             Column {
                 TopAppBar(
                     title = {
                         Column {
-                            Text(MockData.doctorName, style = MaterialTheme.typography.titleLarge)
+                            Text(SessionStore.name ?: "Doctor", style = MaterialTheme.typography.titleLarge)
                             Text(
-                                MockData.doctorSpecialty,
+                                "Waiting patients: ${queue.size}",
                                 style = MaterialTheme.typography.labelSmall,
                                 color = Color.White.copy(alpha = 0.7f)
                             )
                         }
                     },
                     actions = {
+                        IconButton(onClick = { scope.launch { load() } }) {
+                            Icon(Icons.Filled.Refresh, contentDescription = "Refresh", tint = Color.White)
+                        }
                         IconButton(onClick = onLogout) {
-                            Icon(Icons.Filled.Logout, contentDescription = "Logout", tint = Color.White)
+                            Icon(Icons.AutoMirrored.Filled.Logout, contentDescription = "Logout", tint = Color.White)
                         }
                     },
                     colors = TopAppBarDefaults.topAppBarColors(
@@ -81,117 +113,102 @@ fun DoctorHomeScreen(onStartCall: () -> Unit, onLogout: () -> Unit) {
         },
         containerColor = MaterialTheme.colorScheme.background
     ) { padding ->
+        if (loading) {
+            Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
+                CircularProgressIndicator(color = Navy)
+            }
+            return@Scaffold
+        }
+
         LazyColumn(
             modifier = Modifier.padding(padding).fillMaxWidth(),
             contentPadding = androidx.compose.foundation.layout.PaddingValues(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            item { IncomingCallCard(onStartCall) }
             item {
                 Text(
-                    "Consultation History",
+                    "Patient Queue",
                     style = MaterialTheme.typography.titleMedium,
                     color = MaterialTheme.colorScheme.onBackground,
-                    modifier = Modifier.padding(top = 8.dp, start = 4.dp)
+                    modifier = Modifier.padding(start = 4.dp)
                 )
             }
-            items(MockData.consultations) { c -> ConsultationCard(c) }
-        }
-    }
-}
-
-@Composable
-private fun IncomingCallCard(onStartCall: () -> Unit) {
-    val call = MockData.incomingCall
-    Card(
-        shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.Transparent),
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        Column(
-            modifier = Modifier
-                .background(Brush.linearGradient(listOf(Navy, NavySoft)))
-                .padding(18.dp)
-        ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Box(
-                    modifier = Modifier.size(10.dp).background(Saffron, RoundedCornerShape(50))
-                )
-                Spacer(Modifier.size(8.dp))
-                Text(
-                    "INCOMING CONSULTATION",
-                    color = Saffron,
-                    style = MaterialTheme.typography.labelSmall,
-                    fontWeight = FontWeight.Bold
-                )
+            if (error != null) {
+                item { Text(error!!, color = StatusRed, modifier = Modifier.padding(4.dp)) }
             }
-            Spacer(Modifier.height(12.dp))
-            Text(call.patientName, color = Color.White, style = MaterialTheme.typography.headlineSmall)
-            Text(
-                "${call.ageGender} · ${call.village}",
-                color = Color.White.copy(alpha = 0.75f),
-                style = MaterialTheme.typography.bodyMedium
-            )
-            Spacer(Modifier.height(6.dp))
-            Text(call.complaint, color = Color.White.copy(alpha = 0.9f), style = MaterialTheme.typography.bodyLarge)
-            Spacer(Modifier.height(16.dp))
-            Button(
-                onClick = onStartCall,
-                colors = ButtonDefaults.buttonColors(containerColor = Saffron, contentColor = Navy),
-                shape = RoundedCornerShape(14.dp),
-                modifier = Modifier.fillMaxWidth().height(50.dp)
-            ) {
-                Icon(Icons.Filled.Videocam, contentDescription = null)
-                Spacer(Modifier.size(8.dp))
-                Text("Join Video Call", fontWeight = FontWeight.Bold)
+            if (queue.isEmpty()) {
+                item {
+                    Text(
+                        "No patients waiting right now.",
+                        color = TextSecondary,
+                        modifier = Modifier.padding(8.dp)
+                    )
+                }
+            }
+            items(queue, key = { it.id ?: it.hashCode().toString() }) { s ->
+                QueueCard(s, claimingId == s.id) {
+                    val id = s.id ?: return@QueueCard
+                    claimingId = id
+                    scope.launch {
+                        try {
+                            ApiClient.service.claimSession(id)
+                            onOpenConsult(id)
+                        } catch (e: Exception) {
+                            error = "Could not start consultation"
+                        } finally {
+                            claimingId = null
+                        }
+                    }
+                }
             }
         }
     }
 }
 
 @Composable
-private fun ConsultationCard(c: Consultation) {
+private fun QueueCard(s: SessionDto, claiming: Boolean, onStart: () -> Unit) {
+    val emergency = s.urgency == "EMERGENCY"
     Card(
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
         modifier = Modifier.fillMaxWidth()
     ) {
-        Row(modifier = Modifier.padding(14.dp), verticalAlignment = Alignment.Top) {
-            InitialsAvatar(c.patientName, c.tint)
-            Column(Modifier.weight(1f).padding(start = 14.dp)) {
-                Row(
-                    Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(c.patientName, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurface)
-                    StatusPill(c.status)
+        Column(Modifier.padding(14.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                InitialsAvatar(s.villager?.name ?: "?", if (emergency) StatusRed else Navy)
+                Column(Modifier.weight(1f).padding(start = 14.dp)) {
+                    Text(s.villager?.name ?: "Patient", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurface)
+                    Text(
+                        listOfNotNull(s.villager?.gender, s.villager?.village).joinToString(" · "),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = TextSecondary
+                    )
                 }
-                Text(
-                    "${c.ageGender} · ${c.village}",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = TextSecondary
-                )
-                Spacer(Modifier.height(6.dp))
-                Text(c.complaint, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurface)
-                Text(
-                    "Dx: ${c.diagnosis}",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = TextSecondary
-                )
-                Spacer(Modifier.height(6.dp))
-                Text(c.dateTime, style = MaterialTheme.typography.labelSmall, color = TextSecondary)
+                if (emergency) Pill("Emergency", StatusRed, StatusRed.copy(alpha = 0.12f))
+            }
+            Spacer(Modifier.height(10.dp))
+            Text(
+                s.symptoms?.ifBlank { "No symptoms recorded" } ?: "",
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+            Spacer(Modifier.height(14.dp))
+            Button(
+                onClick = onStart,
+                enabled = !claiming,
+                colors = ButtonDefaults.buttonColors(containerColor = Navy, contentColor = Color.White),
+                shape = RoundedCornerShape(14.dp),
+                modifier = Modifier.fillMaxWidth().height(48.dp)
+            ) {
+                if (claiming) {
+                    CircularProgressIndicator(color = Color.White, strokeWidth = 2.dp, modifier = Modifier.size(20.dp))
+                } else {
+                    Icon(Icons.Filled.Videocam, contentDescription = null)
+                    Spacer(Modifier.size(8.dp))
+                    Text("Start Video Consultation", fontWeight = FontWeight.Bold)
+                }
             }
         }
-    }
-}
-
-@Composable
-private fun StatusPill(status: ConsultStatus) {
-    when (status) {
-        ConsultStatus.COMPLETED -> Pill("Completed", StatusGreen, StatusGreen.copy(alpha = 0.12f))
-        ConsultStatus.UPCOMING -> Pill("Upcoming", StatusAmber, StatusAmber.copy(alpha = 0.12f))
-        ConsultStatus.MISSED -> Pill("Missed", StatusRed, StatusRed.copy(alpha = 0.12f))
     }
 }

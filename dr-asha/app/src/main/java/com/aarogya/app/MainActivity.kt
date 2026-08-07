@@ -4,12 +4,15 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.platform.LocalContext
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import com.aarogya.app.data.SessionStore
 import com.aarogya.app.screens.AshaHomeScreen
 import com.aarogya.app.screens.DoctorHomeScreen
 import com.aarogya.app.screens.LoginScreen
+import com.aarogya.app.screens.PrescriptionScreen
 import com.aarogya.app.screens.SplashScreen
 import com.aarogya.app.screens.VideoCallScreen
 import com.aarogya.app.ui.theme.AarogyaTheme
@@ -17,6 +20,7 @@ import com.aarogya.app.ui.theme.AarogyaTheme
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        SessionStore.load(this)
         setContent {
             AarogyaTheme {
                 AarogyaApp()
@@ -28,38 +32,53 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun AarogyaApp() {
     val nav = rememberNavController()
+    val context = LocalContext.current
+
+    fun logout() {
+        SessionStore.clear(context)
+        nav.navigate("login") { popUpTo(0) }
+    }
 
     NavHost(navController = nav, startDestination = "splash") {
         composable("splash") {
             SplashScreen(onFinish = {
-                nav.navigate("login") {
-                    popUpTo("splash") { inclusive = true }
+                val dest = when (SessionStore.role) {
+                    "DOCTOR" -> "doctor"
+                    "ASHA" -> "asha"
+                    else -> "login"
                 }
+                nav.navigate(dest) { popUpTo("splash") { inclusive = true } }
             })
         }
         composable("login") {
-            LoginScreen(
-                onDoctor = { nav.navigate("doctor") },
-                onAsha = { nav.navigate("asha") }
-            )
+            LoginScreen(onLoggedIn = { role ->
+                nav.navigate(if (role == "DOCTOR") "doctor" else "asha") {
+                    popUpTo("login") { inclusive = true }
+                }
+            })
         }
         composable("doctor") {
             DoctorHomeScreen(
-                onStartCall = { nav.navigate("call") },
-                onLogout = {
-                    nav.navigate("login") { popUpTo("login") { inclusive = true } }
-                }
+                onOpenConsult = { id -> nav.navigate("consult/$id") },
+                onLogout = { logout() }
             )
         }
-        composable("call") {
-            VideoCallScreen(onEnd = { nav.popBackStack() })
+        composable("consult/{sessionId}") { entry ->
+            val id = entry.arguments?.getString("sessionId") ?: ""
+            VideoCallScreen(
+                sessionId = id,
+                onEnd = { nav.navigate("prescribe/$id") { popUpTo("doctor") } }
+            )
+        }
+        composable("prescribe/{sessionId}") { entry ->
+            val id = entry.arguments?.getString("sessionId") ?: ""
+            PrescriptionScreen(
+                sessionId = id,
+                onDone = { nav.navigate("doctor") { popUpTo("doctor") { inclusive = true } } }
+            )
         }
         composable("asha") {
-            AshaHomeScreen(
-                onLogout = {
-                    nav.navigate("login") { popUpTo("login") { inclusive = true } }
-                }
-            )
+            AshaHomeScreen(onLogout = { logout() })
         }
     }
 }

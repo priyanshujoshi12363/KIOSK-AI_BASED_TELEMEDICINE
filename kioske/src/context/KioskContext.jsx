@@ -10,6 +10,8 @@ export function KioskProvider({ children }) {
   const [step, setStep] = useState("SPLASH");
   const [villager, setVillager] = useState(null);
   const [symptoms, setSymptoms] = useState("");
+  const [redFlags, setRedFlags] = useState([]);
+  const [session, setSession] = useState(null);
 
   const go = useCallback((next) => setStep(next), []);
 
@@ -17,6 +19,8 @@ export function KioskProvider({ children }) {
     setStep("SPLASH");
     setVillager(null);
     setSymptoms("");
+    setRedFlags([]);
+    setSession(null);
     setLang("hi");
   }, []);
 
@@ -29,6 +33,10 @@ export function KioskProvider({ children }) {
     setVillager,
     symptoms,
     setSymptoms,
+    redFlags,
+    setRedFlags,
+    session,
+    setSession,
     reset,
     t: translations[lang],
   };

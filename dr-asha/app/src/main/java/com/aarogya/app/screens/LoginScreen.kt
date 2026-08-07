@@ -1,6 +1,5 @@
 package com.aarogya.app.screens
 
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -12,33 +11,82 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
-import androidx.compose.material.icons.filled.MedicalServices
-import androidx.compose.material.icons.filled.VolunteerActivism
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.Icon
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
+import com.aarogya.app.data.SessionStore
+import com.aarogya.app.data.remote.ApiClient
+import com.aarogya.app.data.remote.AshaLoginRequest
+import com.aarogya.app.data.remote.DoctorLoginRequest
 import com.aarogya.app.ui.components.TricolorStrip
 import com.aarogya.app.ui.theme.IndiaGreen
 import com.aarogya.app.ui.theme.Navy
+import com.aarogya.app.ui.theme.StatusRed
 import com.aarogya.app.ui.theme.TextSecondary
+import kotlinx.coroutines.launch
 
 @Composable
-fun LoginScreen(onDoctor: () -> Unit, onAsha: () -> Unit) {
+fun LoginScreen(onLoggedIn: (String) -> Unit) {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    var role by remember { mutableStateOf("DOCTOR") }
+    var identifier by remember { mutableStateOf("") }
+    var password by remember { mutableStateOf("") }
+    var loading by remember { mutableStateOf(false) }
+    var error by remember { mutableStateOf<String?>(null) }
+
+    fun submit() {
+        if (identifier.isBlank() || password.isBlank()) {
+            error = "Enter your credentials"
+            return
+        }
+        error = null
+        loading = true
+        scope.launch {
+            try {
+                if (role == "DOCTOR") {
+                    val r = ApiClient.service.doctorLogin(
+                        DoctorLoginRequest(identifier.trim(), password)
+                    )
+                    if (r.token != null) {
+                        SessionStore.save(context, r.token, "DOCTOR", r.doctor?.name)
+                        onLoggedIn("DOCTOR")
+                    } else error = "Login failed"
+                } else {
+                    val r = ApiClient.service.ashaLogin(
+                        AshaLoginRequest(identifier.trim(), password)
+                    )
+                    if (r.token != null) {
+                        SessionStore.save(context, r.token, "ASHA", r.asha?.name)
+                        onLoggedIn("ASHA")
+                    } else error = "Login failed"
+                }
+            } catch (e: Exception) {
+                error = "Invalid credentials or network error"
+            } finally {
+                loading = false
+            }
+        }
+    }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -51,79 +99,107 @@ fun LoginScreen(onDoctor: () -> Unit, onAsha: () -> Unit) {
                 .padding(24.dp),
             verticalArrangement = Arrangement.Center
         ) {
-            Text("Welcome", style = MaterialTheme.typography.headlineLarge, color = MaterialTheme.colorScheme.onBackground)
+            Text(
+                "Welcome",
+                style = MaterialTheme.typography.headlineLarge,
+                color = MaterialTheme.colorScheme.onBackground
+            )
             Text(
                 "Sign in to continue to Aarogya",
                 color = TextSecondary,
                 style = MaterialTheme.typography.bodyLarge
             )
-            Spacer(Modifier.height(32.dp))
+            Spacer(Modifier.height(24.dp))
 
-            RoleCard(
-                title = "Doctor",
-                subtitle = "Take video consultations and view history",
-                icon = Icons.Filled.MedicalServices,
-                tint = Navy,
-                onClick = onDoctor
+            Row(
+                Modifier
+                    .fillMaxWidth()
+                    .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(14.dp))
+                    .padding(4.dp)
+            ) {
+                RoleTab("Doctor", role == "DOCTOR", Navy, Modifier.weight(1f)) {
+                    role = "DOCTOR"; error = null
+                }
+                RoleTab("ASHA Worker", role == "ASHA", IndiaGreen, Modifier.weight(1f)) {
+                    role = "ASHA"; error = null
+                }
+            }
+
+            Spacer(Modifier.height(20.dp))
+
+            OutlinedTextField(
+                value = identifier,
+                onValueChange = { identifier = it },
+                label = { Text(if (role == "DOCTOR") "Email" else "Phone") },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth()
             )
+            Spacer(Modifier.height(12.dp))
+            OutlinedTextField(
+                value = password,
+                onValueChange = { password = it },
+                label = { Text("Password") },
+                singleLine = true,
+                visualTransformation = PasswordVisualTransformation(),
+                modifier = Modifier.fillMaxWidth()
+            )
+
+            if (error != null) {
+                Spacer(Modifier.height(12.dp))
+                Text(error!!, color = StatusRed, style = MaterialTheme.typography.bodyMedium)
+            }
+
+            Spacer(Modifier.height(24.dp))
+            Button(
+                onClick = { submit() },
+                enabled = !loading,
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = if (role == "DOCTOR") Navy else IndiaGreen,
+                    contentColor = Color.White
+                ),
+                shape = RoundedCornerShape(14.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(52.dp)
+            ) {
+                if (loading) {
+                    CircularProgressIndicator(color = Color.White, strokeWidth = 2.dp, modifier = Modifier.height(22.dp))
+                } else {
+                    Text("Sign In", fontWeight = FontWeight.Bold)
+                }
+            }
+
             Spacer(Modifier.height(16.dp))
-            RoleCard(
-                title = "ASHA Worker",
-                subtitle = "Deliver medicines to assigned villagers",
-                icon = Icons.Filled.VolunteerActivism,
-                tint = IndiaGreen,
-                onClick = onAsha
-            )
-
-            Spacer(Modifier.height(28.dp))
             Text(
-                "Demo mode · no password required",
+                "Doctors and ASHA workers register on the government portal.",
                 color = TextSecondary,
                 style = MaterialTheme.typography.labelSmall,
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier.fillMaxWidth()
             )
         }
     }
 }
 
 @Composable
-private fun RoleCard(
-    title: String,
-    subtitle: String,
-    icon: ImageVector,
+private fun RoleTab(
+    label: String,
+    active: Boolean,
     tint: Color,
+    modifier: Modifier,
     onClick: () -> Unit
 ) {
-    Card(
-        onClick = onClick,
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
-        shape = RoundedCornerShape(20.dp),
-        modifier = Modifier.fillMaxWidth()
+    Box(
+        modifier = modifier
+            .clip(RoundedCornerShape(10.dp))
+            .clickable(onClick = onClick)
+            .background(if (active) tint else Color.Transparent)
+            .padding(vertical = 10.dp),
+        contentAlignment = Alignment.Center
     ) {
-        Row(
-            modifier = Modifier.padding(18.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(52.dp)
-                    .clip(CircleShape)
-                    .background(tint.copy(alpha = 0.12f)),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(icon, contentDescription = null, tint = tint, modifier = Modifier.size(28.dp))
-            }
-            Column(Modifier.weight(1f).padding(start = 16.dp)) {
-                Text(title, style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.onSurface)
-                Text(subtitle, style = MaterialTheme.typography.bodyMedium, color = TextSecondary)
-            }
-            Icon(
-                Icons.AutoMirrored.Filled.KeyboardArrowRight,
-                contentDescription = null,
-                tint = TextSecondary
-            )
-        }
+        Text(
+            label,
+            color = if (active) Color.White else TextSecondary,
+            fontWeight = FontWeight.SemiBold
+        )
     }
 }

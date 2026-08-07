@@ -10,7 +10,7 @@ import { streamAgent, detectRedFlags, warmupOllama } from "../lib/ollama.js";
 const MAX_TURNS = 3;
 
 export default function Agent() {
-  const { t, setLang, setSymptoms, go, villager } = useKiosk();
+  const { t, setLang, setSymptoms, setRedFlags, go, villager } = useKiosk();
   const [messages, setMessages] = useState([]);
   const [phase, setPhase] = useState("loading");
   const [draft, setDraft] = useState("");
@@ -122,7 +122,9 @@ export default function Agent() {
       llm.push({ role: "user", content: userText });
       answers.push(userText);
 
-      if (detectRedFlags(userText).length) {
+      const flags = detectRedFlags(userText);
+      if (flags.length) {
+        setRedFlags(flags);
         setSymptoms(answers.join(". "));
         setPhase("emergency");
         const em =

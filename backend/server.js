@@ -1,7 +1,11 @@
 import express from "express";
 import cors from "cors";
 import http from "http";
+import path from "path";
+import { fileURLToPath } from "url";
 import connectDB from "./src/config/db.js";
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 import { initSignaling } from "./src/signaling.js";
 import ashaAuthRoutes from "./src/routes/ashaAuth.routes.js";
 import doctorAuthRoutes from "./src/routes/doctorAuth.routes.js";
@@ -15,6 +19,7 @@ const PORT = process.env.PORT || 4000;
 
 app.use(cors());
 app.use(express.json({ limit: "10mb" }));
+app.use(express.static(path.join(__dirname, "public")));
 
 app.get("/health", (req, res) => {
   res.json({ status: "ok", service: "backend" });
