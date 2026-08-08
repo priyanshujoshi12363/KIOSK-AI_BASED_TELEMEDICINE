@@ -31,11 +31,15 @@
 
       const socket = io();
       let pc = null;
+      let pendingCandidates = [];
+      let relayFound = false;
+      let hasTurn = false;
 
       async function loadIce() {
         try {
           const res = await fetch("/api/rtc/config");
           const cfg = await res.json();
+          hasTurn = Boolean(cfg.hasTurn);
           return {
             iceServers: cfg.iceServers || [{ urls: "stun:stun.l.google.com:19302" }],
             iceTransportPolicy: cfg.iceTransportPolicy || "all",
@@ -45,22 +49,40 @@
         }
       }
 
+      async function flushCandidates() {
+        const queued = pendingCandidates;
+        pendingCandidates = [];
+        for (const candidate of queued) {
+          try {
+            await pc.addIceCandidate(new RTCIceCandidate(candidate));
+          } catch (err) {
+            console.warn("dropped ICE candidate", err);
+          }
+        }
+      }
+
       function wirePeer() {
+        pc.ontrack = (e) => {
+          remote.srcObject = e.streams[0];
+          statusEl.textContent = "Connected";
+        };
 
-      pc.ontrack = (e) => {
-        remote.srcObject = e.streams[0];
-        statusEl.textContent = "Connected";
-      };
-      pc.onicecandidate = (e) => {
-        if (e.candidate) socket.emit("signal", { sessionId, data: { candidate: e.candidate } });
-      };
-      pc.onconnectionstatechange = () => {
-        if (pc.connectionState === "connected") statusEl.textContent = "Connected";
-        if (pc.connectionState === "failed")
-          statusEl.textContent = "Could not connect (network blocked)";
-        if (pc.connectionState === "disconnected") statusEl.textContent = "Call ended";
-      };
+        pc.onicecandidate = (e) => {
+          if (!e.candidate) return;
+          if (e.candidate.type === "relay") relayFound = true;
+          socket.emit("signal", { sessionId, data: { candidate: e.candidate } });
+        };
 
+        pc.onconnectionstatechange = () => {
+          const state = pc.connectionState;
+          if (state === "connected") statusEl.textContent = "Connected";
+          if (state === "disconnected") statusEl.textContent = "Call ended";
+          if (state === "failed") {
+            statusEl.textContent = hasTurn
+              ? "Could not connect (relay failed)"
+              : "Could not connect - needs a TURN server on this network";
+          }
+        };
       }
 
       async function start() {
@@ -91,15 +113,22 @@
         if (!pc) return;
         if (data.sdp) {
           await pc.setRemoteDescription(new RTCSessionDescription(data.sdp));
+          await flushCandidates();
           if (data.sdp.type === "offer") {
             const answer = await pc.createAnswer();
             await pc.setLocalDescription(answer);
             socket.emit("signal", { sessionId, data: { sdp: pc.localDescription } });
           }
         } else if (data.candidate) {
+          if (!pc.remoteDescription) {
+            pendingCandidates.push(data.candidate);
+            return;
+          }
           try {
             await pc.addIceCandidate(new RTCIceCandidate(data.candidate));
-          } catch {}
+          } catch (err) {
+            console.warn("dropped ICE candidate", err);
+          }
         }
       });
 
