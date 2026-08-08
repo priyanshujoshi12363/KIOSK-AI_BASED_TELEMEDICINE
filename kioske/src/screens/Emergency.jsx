@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 import { useKiosk } from "../context/KioskContext.jsx";
 import { speechLocale } from "../i18n.js";
-import { speak } from "../lib/speech.js";
 import { detectLanguage } from "../lib/lang.js";
-import { transcribe, preloadWhisper } from "../lib/whisper.js";
+import { preloadWhisper } from "../lib/whisper.js";
+import { transcribeAudio, speakText, isOnline } from "../lib/ai.js";
 import { recordUntilSilence } from "../lib/audio.js";
 import { analyzeEmergency } from "../lib/emergency.js";
 import { getLocation, kioskVillage } from "../lib/geo.js";
@@ -48,7 +48,7 @@ export default function Emergency() {
     });
 
     (async () => {
-      await speak(t.emSpokenPrompt, speechLocale[lang]);
+      await speakText(t.emSpokenPrompt, lang, speechLocale[lang]);
       listen();
     })();
 
@@ -69,12 +69,13 @@ export default function Emergency() {
       });
       levelRef.current = 0;
       if (submittedRef.current) return;
-      if (!audio || !STT_ENABLED) {
+      const cloud = await isOnline();
+      if (!audio || (!STT_ENABLED && !cloud)) {
         setPhase("waitingText");
         return;
       }
       setPhase("analyzing");
-      const text = await transcribe(audio, lang);
+      const { text } = await transcribeAudio(audio, lang);
       if (submittedRef.current) return;
       if (!text) {
         setPhase("waitingText");
@@ -125,7 +126,7 @@ export default function Emergency() {
     }
 
     setPhase("sent");
-    speak(t.emSentSpoken, speechLocale[spoken || lang]);
+    speakText(t.emSentSpoken, spoken || lang, speechLocale[spoken || lang]);
   }
 
   function submitTyped() {

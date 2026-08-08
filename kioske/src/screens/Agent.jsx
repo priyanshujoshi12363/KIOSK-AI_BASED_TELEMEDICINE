@@ -1,14 +1,22 @@
 import { useEffect, useRef, useState } from "react";
 import { useKiosk } from "../context/KioskContext.jsx";
 import { agentScript, speechLocale } from "../i18n.js";
-import { speak } from "../lib/speech.js";
 import { detectLanguage } from "../lib/lang.js";
-import { preloadWhisper, transcribe } from "../lib/whisper.js";
+import { preloadWhisper } from "../lib/whisper.js";
 import { recordUntilSilence } from "../lib/audio.js";
-import { streamAgent, detectRedFlags, warmupOllama } from "../lib/ollama.js";
-import { STT_ENABLED, LLM_ENABLED } from "../lib/aiConfig.js";
+import { detectRedFlags, warmupOllama } from "../lib/ollama.js";
+import { STT_ENABLED } from "../lib/aiConfig.js";
+import { askAgent, speakText, transcribeAudio, isOnline } from "../lib/ai.js";
 
 const MAX_TURNS = 3;
+
+const SYSTEM_PROMPT =
+  "You are a health intake assistant at a rural tele-medicine kiosk in India. " +
+  "Reply in the SAME language the patient uses (Hindi, Gujarati or English). " +
+  "Ask only ONE short simple question at a time. " +
+  "Gather: main problem, how long it has lasted, severity, and other symptoms. " +
+  "Never diagnose or prescribe. You only collect information for the doctor. " +
+  "Keep every reply under 25 words.";
 
 export default function Agent() {
   const { t, setLang, setSymptoms, setRedFlags, go, villager } = useKiosk();
@@ -53,15 +61,17 @@ export default function Agent() {
     setPhase("listening");
     return new Promise((resolve) => {
       let settled = false;
-      const finish = (text) => {
+      const finish = (value) => {
         if (settled) return;
         settled = true;
         typedResolveRef.current = null;
-        resolve((text || "").trim());
+        resolve(
+          typeof value === "string"
+            ? { text: value.trim(), audio: null }
+            : { text: (value.text || "").trim(), audio: value.audio || null }
+        );
       };
       typedResolveRef.current = finish;
-
-      if (!STT_ENABLED) return;
 
       (async () => {
         try {
@@ -69,8 +79,10 @@ export default function Agent() {
           if (settled) return;
           if (!audio) return finish("");
           setPhase("thinking");
-          const text = await transcribe(audio, langHint);
-          finish(text);
+          const cloud = await isOnline();
+          if (!cloud && !STT_ENABLED) return finish({ text: "", audio });
+          const { text } = await transcribeAudio(audio, langHint);
+          finish({ text, audio });
         } catch {
           finish("");
         }
@@ -86,27 +98,14 @@ export default function Agent() {
     }
   }
 
-  async function speakReply(text, locale) {
+  async function speakReply(text, lang) {
     setPhase("speaking");
-    await speak(text, locale);
-  }
-
-  async function streamReply(llm) {
-    setPhase("thinking");
-    pushMsg("agent", "");
-    let acc = "";
-    for await (const chunk of streamAgent(llm)) {
-      acc += chunk;
-      updateLastAgent(acc);
-    }
-    return acc.trim();
+    await speakText(text, lang, speechLocale[lang]);
   }
 
   function scriptedReply(turn, lang) {
     const script = agentScript[lang] || agentScript.hi;
-    const reply = script[Math.min(turn + 1, script.length - 2)];
-    pushMsg("agent", reply);
-    return reply;
+    return script[Math.min(turn + 1, script.length - 2)];
   }
 
   async function run() {
@@ -119,12 +118,24 @@ export default function Agent() {
 
     const greeting = agentScript.hi[0];
     pushMsg("agent", greeting);
-    await speakReply(greeting, speechLocale.hi);
+    await speakReply(greeting, "hi");
     llm.push({ role: "assistant", content: greeting });
 
     for (let turn = 0; turn < MAX_TURNS; turn++) {
-      let userText = await listenTurn(turn === 0 ? null : lang);
-      if (!userText) userText = await listenTurn(turn === 0 ? null : lang);
+      let heard = await listenTurn(turn === 0 ? null : lang);
+      if (!heard.text && !heard.audio) heard = await listenTurn(turn === 0 ? null : lang);
+      if (!heard.text && !heard.audio) continue;
+
+      setPhase("thinking");
+      const outcome = await askAgent({
+        float32Audio: heard.audio,
+        text: heard.text,
+        language: lang,
+        history: llm,
+        system: SYSTEM_PROMPT,
+      });
+
+      const userText = outcome.transcript || heard.text;
       if (!userText) continue;
 
       lang = detectLanguage(userText);
@@ -143,17 +154,16 @@ export default function Agent() {
             ? "यह गंभीर हो सकता है। मैं तुरंत डॉक्टर से जोड़ रहा हूँ।"
             : "This may be serious. Connecting you to a doctor immediately.";
         pushMsg("agent", em);
-        await speak(em, speechLocale[lang]);
+        await speakText(em, lang, speechLocale[lang]);
         setTimeout(() => go("CONSULT"), 1400);
         return;
       }
 
       if (turn < MAX_TURNS - 1) {
-        const reply = LLM_ENABLED
-          ? await streamReply(llm)
-          : scriptedReply(turn, lang);
+        const reply = outcome.reply || scriptedReply(turn, lang);
+        pushMsg("agent", reply);
         llm.push({ role: "assistant", content: reply });
-        await speakReply(reply, speechLocale[detectLanguage(reply)]);
+        await speakReply(reply, detectLanguage(reply));
       }
     }
 
@@ -163,7 +173,7 @@ export default function Agent() {
         ? "धन्यवाद। मैं अब आपको डॉक्टर से जोड़ रहा हूँ।"
         : "Thank you. Connecting you to a doctor now.";
     pushMsg("agent", closing);
-    await speakReply(closing, speechLocale[lang]);
+    await speakReply(closing, lang);
     setPhase("done");
     setTimeout(() => go("CONSULT"), 1400);
   }

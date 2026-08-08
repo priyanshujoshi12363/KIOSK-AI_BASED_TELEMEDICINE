@@ -1,7 +1,8 @@
-const { app, BrowserWindow, session, globalShortcut } = require("electron");
+const { app, BrowserWindow, session, globalShortcut, ipcMain } = require("electron");
 const { spawn } = require("child_process");
 const http = require("http");
 const path = require("path");
+const online = require("./online.cjs");
 
 app.commandLine.appendSwitch("autoplay-policy", "no-user-gesture-required");
 
@@ -75,6 +76,7 @@ function createWindow() {
     webPreferences: {
       contextIsolation: true,
       nodeIntegration: false,
+      preload: path.join(__dirname, "preload.cjs"),
     },
   });
 
@@ -90,7 +92,24 @@ function createWindow() {
   }
 }
 
+function registerAIHandlers() {
+  const wrap = (fn) => async (_event, payload) => {
+    try {
+      return { ok: true, ...(await fn(payload || {})) };
+    } catch (err) {
+      return { ok: false, error: err.message || "failed" };
+    }
+  };
+
+  ipcMain.handle("ai:configured", async () => ({ ok: true, ...online.configured() }));
+  ipcMain.handle("ai:reachable", async () => ({ ok: true, reachable: await online.reachable() }));
+  ipcMain.handle("ai:transcribe", wrap(online.transcribe));
+  ipcMain.handle("ai:chat", wrap(online.chat));
+  ipcMain.handle("ai:speak", wrap(online.speak));
+}
+
 app.whenReady().then(() => {
+  registerAIHandlers();
   startOllama();
   createWindow();
 

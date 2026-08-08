@@ -1,10 +1,16 @@
+import os
+
+os.environ.setdefault("HF_HOME", r"E:\hf-cache")
+
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
 import face
+import tts as tts_engine
+import voice
 
-app = FastAPI(title="Aarogya Kiosk AI Service", version="0.1.0")
+app = FastAPI(title="Aarogya Kiosk AI Service", version="0.2.0")
 
 app.add_middleware(
     CORSMiddleware,
@@ -70,3 +76,82 @@ def face_embed_best(req: EmbedRequest):
     except Exception:
         raise HTTPException(status_code=500, detail="embedding_failed")
     return EmbedBestResponse(faces=result["faces"], embedding=result["embedding"])
+
+
+class Turn(BaseModel):
+    role: str
+    content: str
+
+
+class ConsultRequest(BaseModel):
+    audio: str
+    language: str | None = None
+    history: list[Turn] = []
+
+
+class ConsultResponse(BaseModel):
+    transcript: str
+    reply: str
+
+
+class TranscribeRequest(BaseModel):
+    audio: str
+    language: str | None = None
+
+
+class TranscribeResponse(BaseModel):
+    text: str
+
+
+class TTSRequest(BaseModel):
+    text: str
+    language: str = "hi"
+
+
+class TTSResponse(BaseModel):
+    audio: str
+    mime: str = "audio/wav"
+    engine: str
+
+
+@app.get("/voice/status")
+def voice_status():
+    return {
+        "model": voice.MODEL_ID,
+        "loaded": voice.is_loaded(),
+        "device": "cuda" if voice.torch.cuda.is_available() else "cpu",
+        "kokoro": tts_engine.available(),
+    }
+
+
+@app.post("/voice/transcribe", response_model=TranscribeResponse)
+def voice_transcribe(req: TranscribeRequest):
+    try:
+        return TranscribeResponse(text=voice.transcribe(req.audio, req.language))
+    except ValueError:
+        raise HTTPException(status_code=400, detail="invalid_audio")
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"transcribe_failed: {exc}")
+
+
+@app.post("/voice/consult", response_model=ConsultResponse)
+def voice_consult(req: ConsultRequest):
+    try:
+        history = [turn.model_dump() for turn in req.history]
+        result = voice.consult(req.audio, req.language, history)
+        return ConsultResponse(**result)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="invalid_audio")
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"consult_failed: {exc}")
+
+
+@app.post("/tts", response_model=TTSResponse)
+def synthesize(req: TTSRequest):
+    try:
+        result = tts_engine.synthesize(req.text, req.language)
+        return TTSResponse(audio=result["audio"], engine=result["engine"])
+    except ValueError:
+        raise HTTPException(status_code=400, detail="empty_text")
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"tts_failed: {exc}")
