@@ -7,136 +7,96 @@
     <style>
       * { margin: 0; box-sizing: border-box; }
       html, body { height: 100%; background: #15171f; overflow: hidden; font-family: sans-serif; }
-      #remote { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; background: #15171f; }
-      #local { position: absolute; top: 16px; right: 16px; width: 110px; height: 150px; object-fit: cover; border-radius: 12px; border: 2px solid #fff; background: #000; }
-      #status { position: absolute; top: 16px; left: 16px; color: #fff; background: rgba(0,0,0,.4); padding: 6px 12px; border-radius: 8px; font-size: 13px; }
-      .bar { position: absolute; top: 0; left: 0; right: 0; height: 5px; display: flex; }
+      #remote { position: absolute; inset: 0; width: 100%; height: 100%; background: #15171f; }
+      #local { position: absolute; top: 16px; right: 16px; width: 110px; height: 150px; border-radius: 12px; border: 2px solid #fff; background: #000; overflow: hidden; z-index: 5; }
+      #status { position: absolute; top: 16px; left: 16px; color: #fff; background: rgba(0,0,0,.45); padding: 6px 12px; border-radius: 8px; font-size: 13px; z-index: 6; }
+      .bar { position: absolute; top: 0; left: 0; right: 0; height: 5px; display: flex; z-index: 7; }
       .bar > div { flex: 1; } .s { background: #ff9933; } .w { background: #fff; } .g { background: #138808; }
     </style>
   </head>
   <body>
     <div class="bar"><div class="s"></div><div class="w"></div><div class="g"></div></div>
-    <video id="remote" autoplay playsinline></video>
-    <video id="local" autoplay playsinline muted></video>
+    <div id="remote"></div>
+    <div id="local"></div>
     <div id="status">Connecting…</div>
 
+    <script src="https://download.agora.io/sdk/release/AgoraRTC_N-4.20.2.js"></script>
     <script src="/socket.io/socket.io.js"></script>
     <script>
       const params = new URLSearchParams(location.search);
       const sessionId = params.get("session");
       const role = params.get("role") || "peer";
       const statusEl = document.getElementById("status");
-      const remote = document.getElementById("remote");
-      const local = document.getElementById("local");
+      const remoteEl = document.getElementById("remote");
+      const localEl = document.getElementById("local");
+
+      const uid = role === "doctor" ? 2 : 1;
+
+      function setStatus(text) {
+        statusEl.textContent = text;
+      }
+
+      function channelName() {
+        return String(sessionId || "lobby").replace(/[^a-zA-Z0-9!#$%&()+\-:;<=>.?@\[\]^_{|}~,]/g, "").slice(0, 64);
+      }
+
+      async function fetchToken(channel) {
+        const res = await fetch(`/api/rtc/agora/token?channel=${encodeURIComponent(channel)}&uid=${uid}`);
+        if (!res.ok) throw new Error("token_failed");
+        return res.json();
+      }
+
+      async function startAgora() {
+        const channel = channelName();
+        const cfg = await fetchToken(channel);
+
+        const client = AgoraRTC.createClient({ mode: "rtc", codec: "vp8" });
+
+        client.on("user-published", async (user, mediaType) => {
+          await client.subscribe(user, mediaType);
+          if (mediaType === "video") {
+            user.videoTrack.play(remoteEl, { fit: "cover" });
+            setStatus("Connected");
+          }
+          if (mediaType === "audio") {
+            user.audioTrack.play();
+          }
+        });
+
+        client.on("user-unpublished", () => setStatus("The other person left"));
+        client.on("user-left", () => setStatus("The other person left"));
+        client.on("connection-state-change", (state) => {
+          if (state === "RECONNECTING") setStatus("Reconnecting…");
+          if (state === "DISCONNECTED") setStatus("Call ended");
+        });
+
+        await client.join(cfg.appId, channel, cfg.token || null, uid);
+        setStatus("Waiting for the other person…");
+
+        let tracks = [];
+        try {
+          tracks = await AgoraRTC.createMicrophoneAndCameraTracks();
+          tracks[1].play(localEl, { fit: "cover" });
+          await client.publish(tracks);
+        } catch (err) {
+          setStatus("Camera/mic blocked");
+        }
+
+        window.addEventListener("beforeunload", () => {
+          tracks.forEach((t) => {
+            try { t.stop(); t.close(); } catch (e) {}
+          });
+          client.leave();
+        });
+      }
 
       const socket = io();
-      let pc = null;
-      let pendingCandidates = [];
-      let relayFound = false;
-      let hasTurn = false;
+      socket.emit("join", { sessionId, role });
 
-      async function loadIce() {
-        try {
-          const res = await fetch("/api/rtc/config");
-          const cfg = await res.json();
-          hasTurn = Boolean(cfg.hasTurn);
-          return {
-            iceServers: cfg.iceServers || [{ urls: "stun:stun.l.google.com:19302" }],
-            iceTransportPolicy: cfg.iceTransportPolicy || "all",
-          };
-        } catch {
-          return { iceServers: [{ urls: "stun:stun.l.google.com:19302" }] };
-        }
-      }
-
-      async function flushCandidates() {
-        const queued = pendingCandidates;
-        pendingCandidates = [];
-        for (const candidate of queued) {
-          try {
-            await pc.addIceCandidate(new RTCIceCandidate(candidate));
-          } catch (err) {
-            console.warn("dropped ICE candidate", err);
-          }
-        }
-      }
-
-      function wirePeer() {
-        pc.ontrack = (e) => {
-          remote.srcObject = e.streams[0];
-          statusEl.textContent = "Connected";
-        };
-
-        pc.onicecandidate = (e) => {
-          if (!e.candidate) return;
-          if (e.candidate.type === "relay") relayFound = true;
-          socket.emit("signal", { sessionId, data: { candidate: e.candidate } });
-        };
-
-        pc.onconnectionstatechange = () => {
-          const state = pc.connectionState;
-          if (state === "connected") statusEl.textContent = "Connected";
-          if (state === "disconnected") statusEl.textContent = "Call ended";
-          if (state === "failed") {
-            statusEl.textContent = hasTurn
-              ? "Could not connect (relay failed)"
-              : "Could not connect - needs a TURN server on this network";
-          }
-        };
-      }
-
-      async function start() {
-        const cfg = await loadIce();
-        pc = new RTCPeerConnection(cfg);
-        wirePeer();
-
-        try {
-          const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-          local.srcObject = stream;
-          stream.getTracks().forEach((t) => pc.addTrack(t, stream));
-        } catch {
-          statusEl.textContent = "Camera/mic blocked";
-        }
-        socket.emit("join", { sessionId, role });
-        statusEl.textContent = "Waiting for the other person…";
-      }
-
-      socket.on("peer-joined", async () => {
-        if (!pc) return;
-        statusEl.textContent = "Connecting…";
-        const offer = await pc.createOffer();
-        await pc.setLocalDescription(offer);
-        socket.emit("signal", { sessionId, data: { sdp: pc.localDescription } });
+      startAgora().catch((err) => {
+        console.error(err);
+        setStatus("Could not start the call");
       });
-
-      socket.on("signal", async ({ data }) => {
-        if (!pc) return;
-        if (data.sdp) {
-          await pc.setRemoteDescription(new RTCSessionDescription(data.sdp));
-          await flushCandidates();
-          if (data.sdp.type === "offer") {
-            const answer = await pc.createAnswer();
-            await pc.setLocalDescription(answer);
-            socket.emit("signal", { sessionId, data: { sdp: pc.localDescription } });
-          }
-        } else if (data.candidate) {
-          if (!pc.remoteDescription) {
-            pendingCandidates.push(data.candidate);
-            return;
-          }
-          try {
-            await pc.addIceCandidate(new RTCIceCandidate(data.candidate));
-          } catch (err) {
-            console.warn("dropped ICE candidate", err);
-          }
-        }
-      });
-
-      socket.on("peer-left", () => {
-        statusEl.textContent = "The other person left";
-      });
-
-      start();
     </script>
   </body>
 </html>
