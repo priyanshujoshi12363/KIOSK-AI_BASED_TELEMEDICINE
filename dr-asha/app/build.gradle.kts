@@ -7,7 +7,6 @@ plugins {
 android {
     namespace = "com.aarogya.app"
     compileSdk = 34
-    buildToolsVersion = "34.0.0"
 
     defaultConfig {
         applicationId = "com.aarogya.app"
