@@ -34,6 +34,10 @@ const notificationSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: "Prescription",
     },
+    emergency: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "EmergencyAlert",
+    },
     type: {
       type: String,
       enum: Object.values(NotificationType),
@@ -62,6 +66,18 @@ const notificationSchema = new mongoose.Schema(
     deliveryAddress: {
       type: String,
       trim: true,
+    },
+    location: {
+      type: new mongoose.Schema(
+        {
+          lat: { type: Number },
+          lng: { type: Number },
+          accuracy: { type: Number },
+          label: { type: String, trim: true },
+          source: { type: String, trim: true },
+        },
+        { _id: false }
+      ),
     },
     medicines: {
       type: [medicineSchema],

@@ -30,4 +30,13 @@ interface ApiService {
 
     @POST("api/asha/deliveries/{id}/delivered")
     suspend fun markDelivered(@Path("id") id: String): DeliveryResponse
+
+    @GET("api/emergency")
+    suspend fun getEmergencies(): EmergenciesResponse
+
+    @POST("api/emergency/{id}/acknowledge")
+    suspend fun acknowledgeEmergency(@Path("id") id: String): EmergencyResponse
+
+    @POST("api/emergency/{id}/resolve")
+    suspend fun resolveEmergency(@Path("id") id: String): EmergencyResponse
 }

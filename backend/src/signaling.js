@@ -1,11 +1,23 @@
 import { Server } from "socket.io";
 
+let ioRef = null;
+
+export function getIO() {
+  return ioRef;
+}
+
 export function initSignaling(httpServer) {
   const io = new Server(httpServer, {
     cors: { origin: "*" },
   });
+  ioRef = io;
 
   io.on("connection", (socket) => {
+    socket.on("join-asha", ({ ashaId }) => {
+      if (!ashaId) return;
+      socket.join(`asha:${ashaId}`);
+    });
+
     socket.on("join", ({ sessionId, role }) => {
       if (!sessionId) return;
       const room = `session:${sessionId}`;

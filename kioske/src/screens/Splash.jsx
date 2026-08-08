@@ -13,7 +13,7 @@ export default function Splash() {
     preloadWhisper();
     preloadTTS();
     warmupOllama();
-    const timer = setTimeout(() => go("WELCOME"), 3000);
+    const timer = setTimeout(() => go("HOME"), 3000);
     return () => clearTimeout(timer);
   }, [go]);
 

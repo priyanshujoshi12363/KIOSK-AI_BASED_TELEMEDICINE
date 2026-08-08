@@ -17,6 +17,7 @@ export async function recordUntilSilence({
   silenceMs = 1100,
   threshold = 0.018,
   onStart,
+  onLevel,
 } = {}) {
   const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
   const recorder = new MediaRecorder(stream);
@@ -40,6 +41,22 @@ export async function recordUntilSilence({
     recorder.start();
     if (onStart) onStart();
 
+    let levelRaf = 0;
+    if (onLevel) {
+      const levelBuf = new Uint8Array(analyser.frequencyBinCount);
+      const tick = () => {
+        analyser.getByteTimeDomainData(levelBuf);
+        let acc = 0;
+        for (let i = 0; i < levelBuf.length; i++) {
+          const v = (levelBuf[i] - 128) / 128;
+          acc += v * v;
+        }
+        onLevel(Math.min(1, Math.sqrt(acc / levelBuf.length) * 6));
+        levelRaf = requestAnimationFrame(tick);
+      };
+      levelRaf = requestAnimationFrame(tick);
+    }
+
     const timer = setInterval(() => {
       analyser.getByteTimeDomainData(buf);
       let sum = 0;
@@ -60,6 +77,8 @@ export async function recordUntilSilence({
     }, 100);
 
     recorder.onstop = async () => {
+      if (levelRaf) cancelAnimationFrame(levelRaf);
+      if (onLevel) onLevel(0);
       stream.getTracks().forEach((t) => t.stop());
       ctx.close();
       const blob = new Blob(chunks, { type: recorder.mimeType || "audio/webm" });

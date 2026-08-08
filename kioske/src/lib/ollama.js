@@ -1,3 +1,5 @@
+import { LLM_ENABLED } from "./aiConfig.js";
+
 const OLLAMA_URL = import.meta.env.VITE_OLLAMA_URL || "http://localhost:11434";
 const MODEL = import.meta.env.VITE_OLLAMA_MODEL || "gemma3n";
 
@@ -23,6 +25,7 @@ export function detectRedFlags(text) {
 }
 
 export async function warmupOllama() {
+  if (!LLM_ENABLED) return false;
   try {
     await fetch(`${OLLAMA_URL}/api/generate`, {
       method: "POST",
@@ -41,6 +44,8 @@ export async function warmupOllama() {
 }
 
 export async function* streamAgent(messages) {
+  if (!LLM_ENABLED) return;
+
   const body = {
     model: MODEL,
     messages: [{ role: "system", content: SYSTEM_PROMPT }, ...messages],

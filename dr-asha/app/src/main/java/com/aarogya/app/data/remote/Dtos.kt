@@ -89,3 +89,31 @@ data class DeliveryDto(
 
 data class DeliveriesResponse(val deliveries: List<DeliveryDto> = emptyList(), val pending: Int = 0)
 data class DeliveryResponse(val delivery: DeliveryDto?)
+
+data class LocationDto(
+    val lat: Double?,
+    val lng: Double?,
+    val accuracy: Double?,
+    val label: String?,
+    val source: String?
+)
+
+data class EmergencyDto(
+    val id: String?,
+    val villager: VillagerBrief?,
+    val village: String?,
+    val transcript: String?,
+    val summary: String?,
+    val language: String?,
+    val category: String?,
+    val categoryLabel: String?,
+    val severity: String?,
+    val patient: String?,
+    val location: LocationDto?,
+    val status: String?,
+    val createdAt: String?,
+    val acknowledgedAt: String?
+)
+
+data class EmergenciesResponse(val alerts: List<EmergencyDto> = emptyList(), val open: Int = 0)
+data class EmergencyResponse(val alert: EmergencyDto?)

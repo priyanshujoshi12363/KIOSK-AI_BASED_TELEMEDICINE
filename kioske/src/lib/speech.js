@@ -1,4 +1,5 @@
 import { KokoroTTS } from "kokoro-js";
+import { TTS_ENABLED } from "./aiConfig.js";
 
 const VOICES = { hi: "hf_alpha", en: "af_heart" };
 
@@ -11,6 +12,9 @@ function langFromLocale(locale) {
 }
 
 function getTTS() {
+  if (!TTS_ENABLED) {
+    return Promise.reject(new Error("neural_tts_disabled"));
+  }
   if (!ttsPromise) {
     ttsPromise = KokoroTTS.from_pretrained("onnx-community/Kokoro-82M-v1.0-ONNX", {
       dtype: "q8",
@@ -21,6 +25,7 @@ function getTTS() {
 }
 
 export function preloadTTS() {
+  if (!TTS_ENABLED) return;
   getTTS();
 }
 

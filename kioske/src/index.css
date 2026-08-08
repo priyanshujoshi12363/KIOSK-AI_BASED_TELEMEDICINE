@@ -35,6 +35,9 @@ body {
 .lang-ml {
   font-family: "Noto Sans Malayalam", "Inter", sans-serif;
 }
+.lang-gu {
+  font-family: "Noto Sans Gujarati", "Inter", sans-serif;
+}
 
 ::-webkit-scrollbar {
   width: 8px;

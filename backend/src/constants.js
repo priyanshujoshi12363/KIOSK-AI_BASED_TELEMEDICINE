@@ -16,6 +16,7 @@ export const NotificationType = {
   NEW_ASSIGNMENT: "NEW_ASSIGNMENT",
   CONSULT_COMPLETE: "CONSULT_COMPLETE",
   FOLLOW_UP: "FOLLOW_UP",
+  EMERGENCY_ALERT: "EMERGENCY_ALERT",
   GENERAL: "GENERAL",
 };
 
@@ -56,4 +57,30 @@ export const Urgency = {
 export const PrescriptionStatus = {
   DRAFT: "DRAFT",
   CONFIRMED: "CONFIRMED",
+};
+
+export const EmergencyCategory = {
+  CARDIAC: "CARDIAC",
+  BREATHING: "BREATHING",
+  STROKE: "STROKE",
+  UNCONSCIOUS: "UNCONSCIOUS",
+  SEIZURE: "SEIZURE",
+  POISONING: "POISONING",
+  BLEEDING: "BLEEDING",
+  CHILDBIRTH: "CHILDBIRTH",
+  BURN: "BURN",
+  INJURY: "INJURY",
+  OTHER: "OTHER",
+};
+
+export const EmergencySeverity = {
+  CRITICAL: "CRITICAL",
+  HIGH: "HIGH",
+  MODERATE: "MODERATE",
+};
+
+export const EmergencyStatus = {
+  OPEN: "OPEN",
+  ACKNOWLEDGED: "ACKNOWLEDGED",
+  RESOLVED: "RESOLVED",
 };

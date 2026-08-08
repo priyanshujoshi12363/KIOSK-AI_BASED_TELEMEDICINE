@@ -6,6 +6,7 @@ import { detectLanguage } from "../lib/lang.js";
 import { preloadWhisper, transcribe } from "../lib/whisper.js";
 import { recordUntilSilence } from "../lib/audio.js";
 import { streamAgent, detectRedFlags, warmupOllama } from "../lib/ollama.js";
+import { STT_ENABLED, LLM_ENABLED } from "../lib/aiConfig.js";
 
 const MAX_TURNS = 3;
 
@@ -59,6 +60,9 @@ export default function Agent() {
         resolve((text || "").trim());
       };
       typedResolveRef.current = finish;
+
+      if (!STT_ENABLED) return;
+
       (async () => {
         try {
           const { audio } = await recordUntilSilence();
@@ -96,6 +100,13 @@ export default function Agent() {
       updateLastAgent(acc);
     }
     return acc.trim();
+  }
+
+  function scriptedReply(turn, lang) {
+    const script = agentScript[lang] || agentScript.hi;
+    const reply = script[Math.min(turn + 1, script.length - 2)];
+    pushMsg("agent", reply);
+    return reply;
   }
 
   async function run() {
@@ -138,7 +149,9 @@ export default function Agent() {
       }
 
       if (turn < MAX_TURNS - 1) {
-        const reply = await streamReply(llm);
+        const reply = LLM_ENABLED
+          ? await streamReply(llm)
+          : scriptedReply(turn, lang);
         llm.push({ role: "assistant", content: reply });
         await speakReply(reply, speechLocale[detectLanguage(reply)]);
       }

@@ -3,7 +3,16 @@ import { t as translations } from "../i18n.js";
 
 const KioskContext = createContext(null);
 
-export const STEPS = ["SPLASH", "WELCOME", "SCAN", "AGENT", "CONSULT", "DONE"];
+export const STEPS = [
+  "SPLASH",
+  "HOME",
+  "WELCOME",
+  "SCAN",
+  "AGENT",
+  "CONSULT",
+  "DONE",
+  "EMERGENCY",
+];
 
 export function KioskProvider({ children }) {
   const [lang, setLang] = useState("hi");
@@ -16,7 +25,7 @@ export function KioskProvider({ children }) {
   const go = useCallback((next) => setStep(next), []);
 
   const reset = useCallback(() => {
-    setStep("SPLASH");
+    setStep("HOME");
     setVillager(null);
     setSymptoms("");
     setRedFlags([]);
