@@ -47,6 +47,18 @@ const consultationSessionSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: "Prescription",
     },
+    location: {
+      type: new mongoose.Schema(
+        {
+          lat: { type: Number },
+          lng: { type: Number },
+          accuracy: { type: Number },
+          label: { type: String, trim: true },
+          source: { type: String, trim: true },
+        },
+        { _id: false }
+      ),
+    },
     pickupAfter: {
       type: Date,
     },

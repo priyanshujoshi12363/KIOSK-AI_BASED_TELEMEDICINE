@@ -21,6 +21,7 @@ export function KioskProvider({ children }) {
   const [symptoms, setSymptoms] = useState("");
   const [redFlags, setRedFlags] = useState([]);
   const [session, setSession] = useState(null);
+  const [prescription, setPrescription] = useState(null);
 
   const go = useCallback((next) => setStep(next), []);
 
@@ -30,6 +31,7 @@ export function KioskProvider({ children }) {
     setSymptoms("");
     setRedFlags([]);
     setSession(null);
+    setPrescription(null);
     setLang("hi");
   }, []);
 
@@ -46,6 +48,8 @@ export function KioskProvider({ children }) {
     setRedFlags,
     session,
     setSession,
+    prescription,
+    setPrescription,
     reset,
     t: translations[lang],
   };

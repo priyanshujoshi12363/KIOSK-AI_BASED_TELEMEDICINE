@@ -9,6 +9,9 @@ const medicineSchema = new mongoose.Schema(
   {
     name: { type: String, required: true, trim: true },
     dosage: { type: String, trim: true },
+    frequency: { type: String, trim: true },
+    timing: { type: String, trim: true },
+    duration: { type: String, trim: true },
     quantity: { type: Number, default: 1 },
     instructions: { type: String, trim: true },
   },

@@ -70,9 +70,42 @@ data class CreatePrescriptionResponse(val notified: Boolean?)
 data class DeliveryMedicine(
     val name: String?,
     val dosage: String?,
+    val frequency: String?,
+    val timing: String?,
+    val duration: String?,
     val quantity: Int?,
     val instructions: String?
 )
+
+data class RxMedicine(
+    val name: String?,
+    val dosage: String?,
+    val frequency: String?,
+    val timing: String?,
+    val duration: String?,
+    val quantity: Int?,
+    val instructions: String?
+)
+
+data class DraftPrescriptionDto(
+    val id: String?,
+    val medicines: List<RxMedicine> = emptyList(),
+    val advice: String?,
+    val diagnosis: String?,
+    val keyPoints: List<String> = emptyList(),
+    val followUp: String?,
+    val transcript: String?,
+    val status: String?
+)
+
+data class DraftResponse(val prescription: DraftPrescriptionDto?)
+data class ConfirmRequest(
+    val medicines: List<RxItem>? = null,
+    val advice: String? = null,
+    val diagnosis: String? = null,
+    val followUp: String? = null
+)
+data class ConfirmResponse(val prescription: DraftPrescriptionDto?, val notified: Boolean?)
 
 data class DeliveryDto(
     val id: String?,

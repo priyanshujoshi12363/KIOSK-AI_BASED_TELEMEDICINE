@@ -56,6 +56,27 @@ export async function createSession({ villagerId, symptoms, language, redFlags }
   return { status: res.status, ...data };
 }
 
+export async function saveDraftPrescription(payload) {
+  const res = await fetch(BASE + "/api/prescription/draft", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "x-kiosk-key": KIOSK_KEY,
+    },
+    body: JSON.stringify(payload),
+  });
+  const data = await res.json().catch(() => ({}));
+  return { status: res.status, ok: res.ok, ...data };
+}
+
+export async function getSessionPrescription(sessionId) {
+  const res = await fetch(BASE + "/api/prescription/session/" + sessionId, {
+    headers: { "x-kiosk-key": KIOSK_KEY },
+  });
+  const data = await res.json().catch(() => ({}));
+  return { status: res.status, ok: res.ok, ...data };
+}
+
 export async function sendEmergency(payload) {
   const res = await fetch(BASE + "/api/emergency", {
     method: "POST",

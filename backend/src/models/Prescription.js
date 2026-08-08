@@ -5,6 +5,9 @@ const itemSchema = new mongoose.Schema(
   {
     name: { type: String, required: true, trim: true },
     dosage: { type: String, trim: true },
+    frequency: { type: String, trim: true },
+    timing: { type: String, trim: true },
+    duration: { type: String, trim: true },
     quantity: { type: Number, default: 1 },
     instructions: { type: String, trim: true },
   },
@@ -26,13 +29,28 @@ const prescriptionSchema = new mongoose.Schema(
     doctor: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Doctor",
-      required: true,
     },
     medicines: {
       type: [itemSchema],
       default: [],
     },
     advice: {
+      type: String,
+      trim: true,
+    },
+    diagnosis: {
+      type: String,
+      trim: true,
+    },
+    keyPoints: {
+      type: [String],
+      default: [],
+    },
+    followUp: {
+      type: String,
+      trim: true,
+    },
+    transcript: {
       type: String,
       trim: true,
     },

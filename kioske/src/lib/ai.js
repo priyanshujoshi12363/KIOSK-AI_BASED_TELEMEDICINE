@@ -95,6 +95,44 @@ export async function transcribeAudio(float32Audio, language) {
   return { text: "", mode: "none" };
 }
 
+export async function askAgentRaw({ messages, system }) {
+  if (await isOnline()) {
+    try {
+      const res = await bridge.chat({ messages, system });
+      if (res?.ok && res.text) return res.text;
+    } catch {
+      // fall through to local
+    }
+  }
+
+  if (LLM_ENABLED) {
+    try {
+      const reply = await localLLM(
+        system ? [{ role: "system", content: system }, ...messages] : messages
+      );
+      if (reply) return reply;
+    } catch {
+      // fall through
+    }
+  }
+
+  try {
+    const res = await fetch(`${AI_SERVICE}/chat`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ messages, system }),
+    });
+    if (res.ok) {
+      const data = await res.json();
+      if (data?.reply) return data.reply;
+    }
+  } catch {
+    // no path available
+  }
+
+  return "";
+}
+
 export async function askAgent({ float32Audio, text, language, history = [], system }) {
   const online = await isOnline();
 

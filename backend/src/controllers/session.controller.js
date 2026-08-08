@@ -24,7 +24,7 @@ function toPublic(s) {
 
 export async function createSession(req, res) {
   try {
-    const { villagerId, symptoms, language, redFlags } = req.body;
+    const { villagerId, symptoms, language, redFlags, location } = req.body;
 
     if (!villagerId) {
       return res.status(400).json({ error: "villagerId is required" });
@@ -49,6 +49,16 @@ export async function createSession(req, res) {
       urgency,
       status: ConsultationStatus.QUEUED,
       assignedAshaWorker: villager.assignedAshaWorker,
+      location:
+        location && Number.isFinite(Number(location.lat)) && Number.isFinite(Number(location.lng))
+          ? {
+              lat: Number(location.lat),
+              lng: Number(location.lng),
+              accuracy: Number(location.accuracy) || undefined,
+              label: location.label,
+              source: location.source,
+            }
+          : undefined,
       pickupAfter,
     });
 

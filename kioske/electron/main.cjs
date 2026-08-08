@@ -1,5 +1,6 @@
 const { app, BrowserWindow, session, globalShortcut, ipcMain } = require("electron");
 const { spawn } = require("child_process");
+const fs = require("fs");
 const http = require("http");
 const path = require("path");
 const online = require("./online.cjs");
@@ -100,6 +101,36 @@ function registerAIHandlers() {
       return { ok: false, error: err.message || "failed" };
     }
   };
+
+  ipcMain.handle("pdf:save", async (_event, payload) => {
+    const { html, fileName } = payload || {};
+    if (!html) return { ok: false, error: "no_html" };
+
+    const win = new BrowserWindow({
+      show: false,
+      webPreferences: { offscreen: true, contextIsolation: true, nodeIntegration: false },
+    });
+
+    try {
+      await win.loadURL("data:text/html;charset=utf-8," + encodeURIComponent(html));
+      const pdf = await win.webContents.printToPDF({
+        printBackground: true,
+        pageSize: "A4",
+        margins: { marginType: "custom", top: 0.4, bottom: 0.4, left: 0.4, right: 0.4 },
+      });
+
+      const dir = path.join(app.getPath("documents"), "Aarogya Prescriptions");
+      fs.mkdirSync(dir, { recursive: true });
+      const target = path.join(dir, fileName || `prescription-${Date.now()}.pdf`);
+      fs.writeFileSync(target, pdf);
+
+      return { ok: true, path: target };
+    } catch (err) {
+      return { ok: false, error: err.message };
+    } finally {
+      win.destroy();
+    }
+  });
 
   ipcMain.handle("ai:configured", async () => ({ ok: true, ...online.configured() }));
   ipcMain.handle("ai:reachable", async () => ({ ok: true, reachable: await online.reachable() }));

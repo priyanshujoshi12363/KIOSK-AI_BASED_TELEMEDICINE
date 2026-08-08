@@ -193,6 +193,24 @@ def voice_consult(req: ConsultRequest):
         raise HTTPException(status_code=500, detail=f"consult_failed: {exc}")
 
 
+class ChatRequest(BaseModel):
+    messages: list[Turn] = []
+    system: str | None = None
+
+
+class ChatResponse(BaseModel):
+    reply: str
+
+
+@app.post("/chat", response_model=ChatResponse)
+def chat(req: ChatRequest):
+    try:
+        messages = [turn.model_dump() for turn in req.messages]
+        return ChatResponse(reply=voice.chat(messages, req.system))
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"chat_failed: {exc}")
+
+
 @app.post("/tts", response_model=TTSResponse)
 def synthesize(req: TTSRequest):
     try:

@@ -46,6 +46,77 @@
         return res.json();
       }
 
+      const recordCall = role === "patient";
+      let audioCtx = null;
+      let mixDest = null;
+      let recorder = null;
+      let chunks = [];
+
+      function ensureMixer() {
+        if (!recordCall) return null;
+        if (!audioCtx) {
+          audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+          mixDest = audioCtx.createMediaStreamDestination();
+        }
+        return mixDest;
+      }
+
+      function addToMix(mediaStreamTrack) {
+        if (!recordCall || !mediaStreamTrack) return;
+        const dest = ensureMixer();
+        try {
+          const src = audioCtx.createMediaStreamSource(new MediaStream([mediaStreamTrack]));
+          src.connect(dest);
+        } catch (err) {
+          console.warn("could not add track to mix", err);
+        }
+      }
+
+      function startRecording() {
+        if (!recordCall || recorder || !mixDest) return;
+        try {
+          recorder = new MediaRecorder(mixDest.stream);
+          recorder.ondataavailable = (e) => {
+            if (e.data && e.data.size) chunks.push(e.data);
+          };
+          recorder.onstop = async () => {
+            if (!chunks.length) return;
+            const blob = new Blob(chunks, { type: recorder.mimeType || "audio/webm" });
+            chunks = [];
+            const buffer = await blob.arrayBuffer();
+            const bytes = new Uint8Array(buffer);
+            let binary = "";
+            const step = 0x8000;
+            for (let i = 0; i < bytes.length; i += step) {
+              binary += String.fromCharCode.apply(null, bytes.subarray(i, i + step));
+            }
+            window.parent.postMessage(
+              {
+                type: "consult-audio",
+                sessionId,
+                mime: blob.type,
+                audio: btoa(binary),
+              },
+              "*"
+            );
+          };
+          recorder.start();
+        } catch (err) {
+          console.warn("recording unavailable", err);
+        }
+      }
+
+      function stopRecording() {
+        if (recorder && recorder.state !== "inactive") {
+          try { recorder.stop(); } catch (e) {}
+        }
+        recorder = null;
+      }
+
+      window.addEventListener("message", (e) => {
+        if (e.data && e.data.type === "end-consult") stopRecording();
+      });
+
       async function startAgora() {
         const channel = channelName();
         const cfg = await fetchToken(channel);
@@ -60,6 +131,8 @@
           }
           if (mediaType === "audio") {
             user.audioTrack.play();
+            addToMix(user.audioTrack.getMediaStreamTrack());
+            startRecording();
           }
         });
 
@@ -78,11 +151,13 @@
           tracks = await AgoraRTC.createMicrophoneAndCameraTracks();
           tracks[1].play(localEl, { fit: "cover" });
           await client.publish(tracks);
+          addToMix(tracks[0].getMediaStreamTrack());
         } catch (err) {
           setStatus("Camera/mic blocked");
         }
 
         window.addEventListener("beforeunload", () => {
+          stopRecording();
           tracks.forEach((t) => {
             try { t.stop(); t.close(); } catch (e) {}
           });

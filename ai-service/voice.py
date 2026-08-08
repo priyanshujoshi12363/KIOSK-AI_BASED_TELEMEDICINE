@@ -166,6 +166,23 @@ def _parse_consult(raw):
     return heard, reply
 
 
+def chat(messages, system=None):
+    built = []
+    if system:
+        built.append({"role": "system", "content": [{"type": "text", "text": system}]})
+
+    for turn in messages or []:
+        role = turn.get("role")
+        text = (turn.get("content") or "").strip()
+        if role in ("user", "assistant") and text:
+            built.append({"role": role, "content": [{"type": "text", "text": text}]})
+
+    if len(built) <= (1 if system else 0):
+        return ""
+
+    return _generate(built, max_new_tokens=512)
+
+
 def consult(audio_b64, language=None, history=None):
     audio = decode_audio(audio_b64)
     messages = _build_messages(history, audio, CONSULT_INSTRUCTION)

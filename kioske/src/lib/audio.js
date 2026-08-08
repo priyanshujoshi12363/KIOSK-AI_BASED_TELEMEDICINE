@@ -1,3 +1,10 @@
+export async function decodeToFloat32(base64, mime) {
+  const binary = atob(base64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  return decodeTo16k(bytes.buffer);
+}
+
 async function decodeTo16k(arrayBuffer) {
   const tmp = new (window.AudioContext || window.webkitAudioContext)();
   const decoded = await tmp.decodeAudioData(arrayBuffer);
