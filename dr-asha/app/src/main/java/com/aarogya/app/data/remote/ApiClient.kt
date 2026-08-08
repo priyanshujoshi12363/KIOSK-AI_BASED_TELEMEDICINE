@@ -6,7 +6,7 @@ import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 
 object ApiClient {
-    const val BASE_URL = "http://10.0.2.2:4000/"
+    val BASE_URL: String = com.aarogya.app.BuildConfig.API_BASE_URL
 
     private val client = OkHttpClient.Builder()
         .addInterceptor { chain ->

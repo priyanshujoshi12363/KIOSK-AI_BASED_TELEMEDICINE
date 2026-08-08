@@ -30,9 +30,22 @@
       const local = document.getElementById("local");
 
       const socket = io();
-      const pc = new RTCPeerConnection({
-        iceServers: [{ urls: "stun:stun.l.google.com:19302" }],
-      });
+      let pc = null;
+
+      async function loadIce() {
+        try {
+          const res = await fetch("/api/rtc/config");
+          const cfg = await res.json();
+          return {
+            iceServers: cfg.iceServers || [{ urls: "stun:stun.l.google.com:19302" }],
+            iceTransportPolicy: cfg.iceTransportPolicy || "all",
+          };
+        } catch {
+          return { iceServers: [{ urls: "stun:stun.l.google.com:19302" }] };
+        }
+      }
+
+      function wirePeer() {
 
       pc.ontrack = (e) => {
         remote.srcObject = e.streams[0];
@@ -43,11 +56,18 @@
       };
       pc.onconnectionstatechange = () => {
         if (pc.connectionState === "connected") statusEl.textContent = "Connected";
-        if (pc.connectionState === "disconnected" || pc.connectionState === "failed")
-          statusEl.textContent = "Call ended";
+        if (pc.connectionState === "failed")
+          statusEl.textContent = "Could not connect (network blocked)";
+        if (pc.connectionState === "disconnected") statusEl.textContent = "Call ended";
       };
 
+      }
+
       async function start() {
+        const cfg = await loadIce();
+        pc = new RTCPeerConnection(cfg);
+        wirePeer();
+
         try {
           const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
           local.srcObject = stream;
@@ -60,12 +80,15 @@
       }
 
       socket.on("peer-joined", async () => {
+        if (!pc) return;
+        statusEl.textContent = "Connecting…";
         const offer = await pc.createOffer();
         await pc.setLocalDescription(offer);
         socket.emit("signal", { sessionId, data: { sdp: pc.localDescription } });
       });
 
       socket.on("signal", async ({ data }) => {
+        if (!pc) return;
         if (data.sdp) {
           await pc.setRemoteDescription(new RTCSessionDescription(data.sdp));
           if (data.sdp.type === "offer") {

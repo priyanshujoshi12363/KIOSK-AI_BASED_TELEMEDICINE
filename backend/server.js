@@ -14,6 +14,7 @@ import sessionRoutes from "./src/routes/session.routes.js";
 import prescriptionRoutes from "./src/routes/prescription.routes.js";
 import deliveryRoutes from "./src/routes/delivery.routes.js";
 import emergencyRoutes from "./src/routes/emergency.routes.js";
+import rtcRoutes from "./src/routes/rtc.routes.js";
 
 const app = express();
 const PORT = process.env.PORT || 4000;
@@ -37,6 +38,7 @@ app.use("/api/session", sessionRoutes);
 app.use("/api/prescription", prescriptionRoutes);
 app.use("/api/asha/deliveries", deliveryRoutes);
 app.use("/api/emergency", emergencyRoutes);
+app.use("/api/rtc", rtcRoutes);
 
 const server = http.createServer(app);
 initSignaling(server);

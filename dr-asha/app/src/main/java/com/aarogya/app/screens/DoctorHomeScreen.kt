@@ -32,7 +32,10 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.platform.LocalContext
+import kotlinx.coroutines.delay
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
@@ -52,6 +55,7 @@ import com.aarogya.app.ui.components.Pill
 import com.aarogya.app.ui.components.TricolorStrip
 import com.aarogya.app.ui.theme.Navy
 import com.aarogya.app.ui.theme.StatusGreen
+import com.aarogya.app.ui.components.Ringer
 import com.aarogya.app.ui.theme.StatusRed
 import com.aarogya.app.ui.theme.TextSecondary
 import kotlinx.coroutines.launch
@@ -60,18 +64,32 @@ import kotlinx.coroutines.launch
 @Composable
 fun DoctorHomeScreen(onOpenConsult: (String) -> Unit, onLogout: () -> Unit) {
     val scope = rememberCoroutineScope()
+    val context = LocalContext.current
     val queue = remember { mutableStateListOf<SessionDto>() }
     var loading by remember { mutableStateOf(true) }
     var error by remember { mutableStateOf<String?>(null) }
     var claimingId by remember { mutableStateOf<String?>(null) }
+    var incoming by remember { mutableStateOf<SessionDto?>(null) }
+    val seen = remember { mutableStateListOf<String>() }
+    var primed by remember { mutableStateOf(false) }
 
-    suspend fun load() {
-        loading = true
+    suspend fun load(initial: Boolean = false) {
+        if (initial) loading = true
         error = null
         try {
             val r = ApiClient.service.getQueue()
             queue.clear()
             queue.addAll(r.sessions)
+
+            val fresh = r.sessions.filter { it.id != null && !seen.contains(it.id) }
+            seen.clear()
+            seen.addAll(r.sessions.mapNotNull { it.id })
+
+            if (primed && fresh.isNotEmpty() && incoming == null) {
+                incoming = fresh.firstOrNull { it.urgency == "EMERGENCY" } ?: fresh.first()
+                Ringer.start(context, incoming?.urgency == "EMERGENCY")
+            }
+            primed = true
         } catch (e: Exception) {
             error = "Could not load patient queue"
         } finally {
@@ -79,7 +97,42 @@ fun DoctorHomeScreen(onOpenConsult: (String) -> Unit, onLogout: () -> Unit) {
         }
     }
 
-    LaunchedEffect(Unit) { load() }
+    LaunchedEffect(Unit) { load(initial = true) }
+
+    LaunchedEffect(Unit) {
+        while (true) {
+            delay(8000)
+            load()
+        }
+    }
+
+    DisposableEffect(Unit) { onDispose { Ringer.stop() } }
+
+    incoming?.let { call ->
+        IncomingCallScreen(
+            session = call,
+            onAccept = {
+                Ringer.stop()
+                val id = call.id
+                incoming = null
+                if (id != null) {
+                    scope.launch {
+                        try {
+                            ApiClient.service.claimSession(id)
+                            onOpenConsult(id)
+                        } catch (e: Exception) {
+                            error = "Could not start consultation"
+                        }
+                    }
+                }
+            },
+            onDismiss = {
+                Ringer.stop()
+                incoming = null
+            }
+        )
+        return
+    }
 
     Scaffold(
         topBar = {
