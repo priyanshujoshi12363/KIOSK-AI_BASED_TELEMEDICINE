@@ -1,6 +1,11 @@
 import base64
+import os
+
 import cv2
 import numpy as np
+
+if os.environ.get("INSIGHTFACE_HOME"):
+    os.environ.setdefault("INSIGHTFACE_HOME", os.environ["INSIGHTFACE_HOME"])
 
 _face_app = None
 

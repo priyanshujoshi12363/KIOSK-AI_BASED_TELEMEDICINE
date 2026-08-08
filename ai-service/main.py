@@ -6,7 +6,13 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
+from dotenv import load_dotenv
+
+load_dotenv(os.path.join(os.path.dirname(__file__), ".env"))
+
+import db
 import face
+import identity
 import tts as tts_engine
 import voice
 
@@ -76,6 +82,47 @@ def face_embed_best(req: EmbedRequest):
     except Exception:
         raise HTTPException(status_code=500, detail="embedding_failed")
     return EmbedBestResponse(faces=result["faces"], embedding=result["embedding"])
+
+
+class IdentifyRequest(BaseModel):
+    image: str
+
+
+class EnrollRequest(BaseModel):
+    villagerId: str
+    images: list[str]
+
+
+@app.get("/identity/status")
+def identity_status():
+    return {"db": db.ping(), **identity.status()}
+
+
+@app.post("/identity/refresh")
+def identity_refresh():
+    return identity.refresh(force=True)
+
+
+@app.post("/identity/identify")
+def identity_identify(req: IdentifyRequest):
+    try:
+        return identity.identify(req.image)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="invalid_image")
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"identify_failed: {exc}")
+
+
+@app.post("/identity/enroll")
+def identity_enroll(req: EnrollRequest):
+    if not req.images:
+        raise HTTPException(status_code=400, detail="images_required")
+    try:
+        return identity.enroll(req.villagerId, req.images)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="no_face")
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"enroll_failed: {exc}")
 
 
 class Turn(BaseModel):
