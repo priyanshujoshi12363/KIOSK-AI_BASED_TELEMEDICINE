@@ -2,19 +2,17 @@ import AshokaChakra from "./AshokaChakra.jsx";
 
 export default function KioskBackground() {
   return (
-    <div className="pointer-events-none fixed inset-0 -z-10 overflow-hidden">
-      <div className="absolute -left-40 -top-40 h-[34rem] w-[34rem] rounded-full bg-saffron/20 blur-[130px]" />
-      <div className="absolute -bottom-44 -right-40 h-[34rem] w-[34rem] rounded-full bg-indiagreen/20 blur-[130px]" />
-      <div className="absolute left-1/2 top-1/3 hidden h-[30rem] w-[30rem] -translate-x-1/2 rounded-full bg-navy/10 blur-[150px] sm:block" />
-      <div className="absolute right-6 top-24 hidden text-navy/[0.04] lg:block">
-        <AshokaChakra size={560} spin />
+    <div className="pointer-events-none fixed inset-0 -z-10 overflow-hidden bg-[#f4f6fb]">
+      <div className="absolute -left-52 -top-52 h-[38rem] w-[38rem] rounded-full bg-saffron/[0.07] blur-[150px]" />
+      <div className="absolute -bottom-52 -right-52 h-[38rem] w-[38rem] rounded-full bg-indiagreen/[0.07] blur-[150px]" />
+      <div className="absolute right-8 top-32 hidden text-[#0a1a3d]/[0.028] xl:block">
+        <AshokaChakra size={620} spin />
       </div>
       <div
-        className="absolute inset-0 opacity-[0.025]"
+        className="absolute inset-0 opacity-[0.02]"
         style={{
-          backgroundImage:
-            "radial-gradient(#01055b 1px, transparent 1px)",
-          backgroundSize: "26px 26px",
+          backgroundImage: "radial-gradient(#0a1a3d 1px, transparent 1px)",
+          backgroundSize: "28px 28px",
         }}
       />
     </div>

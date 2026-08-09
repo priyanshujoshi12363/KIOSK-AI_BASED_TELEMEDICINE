@@ -30,9 +30,12 @@ export default function Splash() {
         </div>
       </div>
 
-      <h1 className="mt-12 text-6xl font-black tracking-tight text-white drop-shadow-lg">आरोग्य</h1>
-      <p className="mt-3 text-xl font-semibold tracking-wide text-white/80">Aarogya Kiosk</p>
-      <p className="mt-1 text-sm font-medium text-white/45">Government of Kerala · Tele-medicine</p>
+      <h1 className="mt-12 text-6xl font-black tracking-tight text-white drop-shadow-lg">આરોગ્ય</h1>
+      <p className="mt-3 text-xl font-semibold tracking-wide text-white/80">Aarogya Tele-medicine Kiosk</p>
+      <p className="mt-1.5 text-sm font-medium text-white/50">Government of Gujarat</p>
+      <p className="mt-0.5 text-xs font-medium text-white/35">
+        Department of Health &amp; Family Welfare
+      </p>
 
       <div className="mt-10 flex items-center gap-1.5">
         <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-saffron [animation-delay:-0.3s]" />
