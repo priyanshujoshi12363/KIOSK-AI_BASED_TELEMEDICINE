@@ -16,7 +16,6 @@ import com.aarogya.app.screens.PrescriptionScreen
 import com.aarogya.app.screens.SplashScreen
 import com.aarogya.app.screens.AshaHistoryScreen
 import com.aarogya.app.screens.DoctorHistoryScreen
-import com.aarogya.app.screens.ReviewRxScreen
 import com.aarogya.app.screens.VideoCallScreen
 import com.aarogya.app.ui.theme.AarogyaTheme
 
@@ -77,15 +76,7 @@ fun AarogyaApp() {
             val id = entry.arguments?.getString("sessionId") ?: ""
             VideoCallScreen(
                 sessionId = id,
-                onEnd = { nav.navigate("review/$id") { popUpTo("doctor") } }
-            )
-        }
-        composable("review/{sessionId}") { entry ->
-            val id = entry.arguments?.getString("sessionId") ?: ""
-            ReviewRxScreen(
-                sessionId = id,
-                onDone = { nav.navigate("doctor") { popUpTo("doctor") { inclusive = true } } },
-                onManual = { nav.navigate("prescribe/$id") }
+                onEnd = { nav.navigate("prescribe/$id") { popUpTo("doctor") } }
             )
         }
         composable("prescribe/{sessionId}") { entry ->

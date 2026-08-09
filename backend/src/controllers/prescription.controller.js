@@ -237,12 +237,10 @@ export async function createPrescription(req, res) {
       return res.status(403).json({ error: "Not your consultation" });
     }
 
-    const items = medicines.map((m) => ({
-      name: m.name,
-      dosage: m.dosage || "",
-      quantity: Number(m.quantity) || 1,
-      instructions: m.instructions || "",
-    }));
+    const items = normaliseItems(medicines);
+    if (!items.length) {
+      return res.status(400).json({ error: "At least one medicine is required" });
+    }
 
     const prescription = await Prescription.create({
       session: session._id,
@@ -278,6 +276,7 @@ export async function createPrescription(req, res) {
         priority,
         deliveryAddress: session.villager.address,
         medicines: items,
+        location: session.location,
       });
       notified = true;
     }

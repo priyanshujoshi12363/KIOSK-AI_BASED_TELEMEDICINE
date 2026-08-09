@@ -56,7 +56,10 @@ data class RxItem(
     val name: String,
     val dosage: String?,
     val quantity: Int?,
-    val instructions: String?
+    val instructions: String?,
+    val frequency: String? = null,
+    val timing: String? = null,
+    val duration: String? = null
 )
 
 data class CreatePrescriptionRequest(

@@ -1,6 +1,8 @@
 package com.aarogya.app.screens
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -46,12 +48,15 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.aarogya.app.data.remote.ApiClient
 import com.aarogya.app.data.remote.CreatePrescriptionRequest
 import com.aarogya.app.data.remote.MedicineDto
 import com.aarogya.app.data.remote.RxItem
 import com.aarogya.app.ui.components.TricolorStrip
+import com.aarogya.app.ui.theme.IndiaGreen
 import com.aarogya.app.ui.theme.Navy
+import com.aarogya.app.ui.theme.Saffron
 import com.aarogya.app.ui.theme.StatusGreen
 import com.aarogya.app.ui.theme.StatusRed
 import com.aarogya.app.ui.theme.TextSecondary
@@ -182,6 +187,10 @@ fun PrescriptionScreen(sessionId: String, onDone: () -> Unit) {
                         },
                         onRemove = {
                             selected.removeAll { it.name == item.name }
+                        },
+                        onUpdate = { updated ->
+                            val i = selected.indexOfFirst { it.name == item.name }
+                            if (i >= 0) selected[i] = updated
                         }
                     )
                 }
@@ -218,15 +227,58 @@ fun PrescriptionScreen(sessionId: String, onDone: () -> Unit) {
     }
 }
 
+private val FREQUENCIES = listOf("1-0-0", "0-0-1", "1-0-1", "1-1-1", "SOS")
+private val TIMINGS = listOf("After food", "Before food", "Empty stomach")
+private val DURATIONS = listOf("3 days", "5 days", "7 days", "10 days", "15 days")
+
 @Composable
-private fun RxRow(item: RxItem, onQty: (Int) -> Unit, onRemove: () -> Unit) {
+private fun ChipRow(
+    options: List<String>,
+    selected: String?,
+    accent: Color,
+    onPick: (String) -> Unit
+) {
+    Row(
+        Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+        horizontalArrangement = Arrangement.spacedBy(6.dp)
+    ) {
+        options.forEach { option ->
+            val active = selected == option
+            Box(
+                Modifier
+                    .background(
+                        if (active) accent else MaterialTheme.colorScheme.surfaceVariant,
+                        RoundedCornerShape(8.dp)
+                    )
+                    .clickable { onPick(option) }
+                    .padding(horizontal = 10.dp, vertical = 6.dp)
+            ) {
+                Text(
+                    option,
+                    fontSize = 12.sp,
+                    fontWeight = if (active) FontWeight.Bold else FontWeight.Normal,
+                    color = if (active) Color.White else TextSecondary
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun RxRow(
+    item: RxItem,
+    onQty: (Int) -> Unit,
+    onRemove: () -> Unit,
+    onUpdate: (RxItem) -> Unit
+) {
     Card(
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
         modifier = Modifier.fillMaxWidth()
     ) {
-        Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+      Column(Modifier.padding(12.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
                 Text(item.name, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurface)
                 Text(item.dosage ?: "", style = MaterialTheme.typography.bodyMedium, color = TextSecondary)
@@ -255,5 +307,21 @@ private fun RxRow(item: RxItem, onQty: (Int) -> Unit, onRemove: () -> Unit) {
                 Icon(Icons.Filled.Close, contentDescription = "Remove", tint = StatusRed)
             }
         }
+
+        Spacer(Modifier.height(8.dp))
+        Text("How often", fontSize = 10.sp, color = TextSecondary, fontWeight = FontWeight.Bold)
+        Spacer(Modifier.height(4.dp))
+        ChipRow(FREQUENCIES, item.frequency, Navy) { onUpdate(item.copy(frequency = it)) }
+
+        Spacer(Modifier.height(8.dp))
+        Text("When", fontSize = 10.sp, color = TextSecondary, fontWeight = FontWeight.Bold)
+        Spacer(Modifier.height(4.dp))
+        ChipRow(TIMINGS, item.timing, IndiaGreen) { onUpdate(item.copy(timing = it)) }
+
+        Spacer(Modifier.height(8.dp))
+        Text("For how long", fontSize = 10.sp, color = TextSecondary, fontWeight = FontWeight.Bold)
+        Spacer(Modifier.height(4.dp))
+        ChipRow(DURATIONS, item.duration, Saffron) { onUpdate(item.copy(duration = it)) }
+      }
     }
 }
