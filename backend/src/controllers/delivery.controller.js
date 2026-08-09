@@ -50,6 +50,53 @@ export async function getDeliveries(req, res) {
   }
 }
 
+export async function getHistory(req, res) {
+  try {
+    const limit = Math.min(Number(req.query.limit) || 50, 100);
+
+    const deliveries = await Notification.find({
+      ashaWorker: req.user.id,
+      type: NotificationType.MEDICINE_DELIVERY,
+      status: NotificationStatus.COMPLETED,
+    })
+      .populate("villager", "name village phone aadhaarLast4")
+      .sort({ completedAt: -1, createdAt: -1 })
+      .limit(limit);
+
+    const EmergencyAlert = (await import("../models/EmergencyAlert.js")).default;
+    const alerts = await EmergencyAlert.find({
+      ashaWorker: req.user.id,
+      status: { $in: ["ACKNOWLEDGED", "RESOLVED"] },
+    })
+      .populate("villager", "name village phone")
+      .sort({ resolvedAt: -1, acknowledgedAt: -1, createdAt: -1 })
+      .limit(limit);
+
+    return res.json({
+      deliveries: deliveries.map(toPublic),
+      emergencies: alerts.map((a) => ({
+        id: a._id,
+        villager: a.villager,
+        village: a.village,
+        transcript: a.transcript,
+        summary: a.summary,
+        category: a.category,
+        severity: a.severity,
+        patient: a.patient,
+        location: a.location,
+        status: a.status,
+        createdAt: a.createdAt,
+        acknowledgedAt: a.acknowledgedAt,
+        resolvedAt: a.resolvedAt,
+      })),
+      totalDelivered: deliveries.length,
+      totalEmergencies: alerts.length,
+    });
+  } catch {
+    return res.status(500).json({ error: "Failed to load history" });
+  }
+}
+
 export async function markDelivered(req, res) {
   try {
     const delivery = await Notification.findOne({

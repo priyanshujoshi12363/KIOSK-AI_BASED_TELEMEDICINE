@@ -16,6 +16,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Logout
+import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Videocam
 import androidx.compose.material3.Button
@@ -62,7 +63,11 @@ import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun DoctorHomeScreen(onOpenConsult: (String) -> Unit, onLogout: () -> Unit) {
+fun DoctorHomeScreen(
+    onOpenConsult: (String) -> Unit,
+    onHistory: () -> Unit,
+    onLogout: () -> Unit
+) {
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
     val queue = remember { mutableStateListOf<SessionDto>() }
@@ -149,6 +154,9 @@ fun DoctorHomeScreen(onOpenConsult: (String) -> Unit, onLogout: () -> Unit) {
                         }
                     },
                     actions = {
+                        IconButton(onClick = onHistory) {
+                            Icon(Icons.Filled.History, contentDescription = "History", tint = Color.White)
+                        }
                         IconButton(onClick = { scope.launch { load() } }) {
                             Icon(Icons.Filled.Refresh, contentDescription = "Refresh", tint = Color.White)
                         }

@@ -14,6 +14,8 @@ import com.aarogya.app.screens.DoctorHomeScreen
 import com.aarogya.app.screens.LoginScreen
 import com.aarogya.app.screens.PrescriptionScreen
 import com.aarogya.app.screens.SplashScreen
+import com.aarogya.app.screens.AshaHistoryScreen
+import com.aarogya.app.screens.DoctorHistoryScreen
 import com.aarogya.app.screens.ReviewRxScreen
 import com.aarogya.app.screens.VideoCallScreen
 import com.aarogya.app.ui.theme.AarogyaTheme
@@ -61,8 +63,15 @@ fun AarogyaApp() {
         composable("doctor") {
             DoctorHomeScreen(
                 onOpenConsult = { id -> nav.navigate("consult/$id") },
+                onHistory = { nav.navigate("doctorHistory") },
                 onLogout = { logout() }
             )
+        }
+        composable("doctorHistory") {
+            DoctorHistoryScreen(onBack = { nav.popBackStack() })
+        }
+        composable("ashaHistory") {
+            AshaHistoryScreen(onBack = { nav.popBackStack() })
         }
         composable("consult/{sessionId}") { entry ->
             val id = entry.arguments?.getString("sessionId") ?: ""
@@ -87,7 +96,10 @@ fun AarogyaApp() {
             )
         }
         composable("asha") {
-            AshaHomeScreen(onLogout = { logout() })
+            AshaHomeScreen(
+                onHistory = { nav.navigate("ashaHistory") },
+                onLogout = { logout() }
+            )
         }
     }
 }

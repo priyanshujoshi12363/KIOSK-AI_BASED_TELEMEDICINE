@@ -17,6 +17,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Map
 import androidx.compose.material.icons.filled.Medication
@@ -68,7 +69,7 @@ import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AshaHomeScreen(onLogout: () -> Unit) {
+fun AshaHomeScreen(onHistory: () -> Unit, onLogout: () -> Unit) {
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
     val deliveries = remember { mutableStateListOf<DeliveryDto>() }
@@ -144,6 +145,9 @@ fun AshaHomeScreen(onLogout: () -> Unit) {
                         }
                     },
                     actions = {
+                        IconButton(onClick = onHistory) {
+                            Icon(Icons.Filled.History, contentDescription = "History", tint = Color.White)
+                        }
                         IconButton(onClick = onLogout) {
                             Icon(Icons.AutoMirrored.Filled.Logout, contentDescription = "Logout", tint = Color.White)
                         }

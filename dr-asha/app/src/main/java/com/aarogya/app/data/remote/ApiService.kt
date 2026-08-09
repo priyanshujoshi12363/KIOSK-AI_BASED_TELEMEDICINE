@@ -31,6 +31,12 @@ interface ApiService {
     @POST("api/asha/deliveries/{id}/delivered")
     suspend fun markDelivered(@Path("id") id: String): DeliveryResponse
 
+    @GET("api/session/history")
+    suspend fun getDoctorHistory(): DoctorHistoryResponse
+
+    @GET("api/asha/deliveries/history")
+    suspend fun getAshaHistory(): AshaHistoryResponse
+
     @GET("api/prescription/draft/{sessionId}")
     suspend fun getDraft(@Path("sessionId") sessionId: String): DraftResponse
 

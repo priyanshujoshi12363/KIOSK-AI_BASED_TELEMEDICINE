@@ -150,3 +150,30 @@ data class EmergencyDto(
 
 data class EmergenciesResponse(val alerts: List<EmergencyDto> = emptyList(), val open: Int = 0)
 data class EmergencyResponse(val alert: EmergencyDto?)
+
+data class HistorySessionDto(
+    val id: String?,
+    val villager: VillagerBrief?,
+    val village: String?,
+    val symptoms: String?,
+    val urgency: String?,
+    val status: String?,
+    val consultEndedAt: String?,
+    val createdAt: String?,
+    val diagnosis: String?,
+    val advice: String?,
+    val medicines: List<DeliveryMedicine> = emptyList()
+)
+
+data class DoctorHistoryResponse(
+    val sessions: List<HistorySessionDto> = emptyList(),
+    val total: Int = 0,
+    val dispensed: Int = 0
+)
+
+data class AshaHistoryResponse(
+    val deliveries: List<DeliveryDto> = emptyList(),
+    val emergencies: List<EmergencyDto> = emptyList(),
+    val totalDelivered: Int = 0,
+    val totalEmergencies: Int = 0
+)

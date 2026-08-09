@@ -124,6 +124,41 @@ export async function getSession(req, res) {
   }
 }
 
+export async function getDoctorHistory(req, res) {
+  try {
+    const limit = Math.min(Number(req.query.limit) || 50, 100);
+
+    const sessions = await ConsultationSession.find({
+      doctor: req.user.id,
+      status: { $in: [ConsultationStatus.PRESCRIBED, ConsultationStatus.DISPENSED] },
+    })
+      .populate("villager", "name village phone aadhaarLast4 gender dateOfBirth")
+      .populate("prescription", "medicines diagnosis advice status confirmedAt")
+      .sort({ consultEndedAt: -1, createdAt: -1 })
+      .limit(limit);
+
+    const items = sessions.map((s) => ({
+      id: s._id,
+      villager: s.villager,
+      village: s.village,
+      symptoms: s.symptoms,
+      urgency: s.urgency,
+      status: s.status,
+      consultEndedAt: s.consultEndedAt,
+      createdAt: s.createdAt,
+      diagnosis: s.prescription?.diagnosis || "",
+      medicines: s.prescription?.medicines || [],
+      advice: s.prescription?.advice || "",
+    }));
+
+    const dispensed = items.filter((i) => i.status === ConsultationStatus.DISPENSED).length;
+
+    return res.json({ sessions: items, total: items.length, dispensed });
+  } catch {
+    return res.status(500).json({ error: "Failed to load history" });
+  }
+}
+
 export async function endSession(req, res) {
   try {
     const session = await ConsultationSession.findOneAndUpdate(
