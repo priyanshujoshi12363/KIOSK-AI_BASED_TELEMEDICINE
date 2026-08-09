@@ -57,16 +57,47 @@ function playPCM(float32, sampleRate) {
   });
 }
 
+const PREFERRED = [
+  "heera", "kalpana", "swara", "madhur", "aarohi", "neerja",
+  "google हिन्दी", "google hindi", "natural", "online", "female",
+];
+
+function pickVoice(locale) {
+  const voices = window.speechSynthesis?.getVoices?.() || [];
+  if (!voices.length) return null;
+
+  const lang = (locale || "hi-IN").toLowerCase();
+  const base = lang.split("-")[0];
+
+  const sameLang = voices.filter((v) => (v.lang || "").toLowerCase().startsWith(base));
+  const pool = sameLang.length ? sameLang : voices;
+
+  for (const want of PREFERRED) {
+    const hit = pool.find((v) => (v.name || "").toLowerCase().includes(want));
+    if (hit) return hit;
+  }
+
+  return pool.find((v) => !(v.name || "").toLowerCase().includes("david")) || pool[0];
+}
+
 function fallbackSpeak(text, locale) {
   return new Promise((resolve) => {
     if (!window.speechSynthesis) return resolve();
     window.speechSynthesis.cancel();
+
     const u = new SpeechSynthesisUtterance(text);
     u.lang = locale || "hi-IN";
+
+    const voice = pickVoice(locale);
+    if (voice) u.voice = voice;
+
+    u.rate = 0.92;
+    u.pitch = 1.06;
+
     u.onend = () => resolve();
     u.onerror = () => resolve();
     window.speechSynthesis.speak(u);
-    setTimeout(resolve, 9000);
+    setTimeout(resolve, 12000);
   });
 }
 

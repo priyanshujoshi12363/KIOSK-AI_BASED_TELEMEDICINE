@@ -2,7 +2,7 @@ import { useRef, useState, useEffect } from "react";
 import Webcam from "react-webcam";
 import { useKiosk } from "../context/KioskContext.jsx";
 import { identifyVillager } from "../lib/api.js";
-import { speak } from "../lib/speech.js";
+import { speakText } from "../lib/ai.js";
 import { speechLocale } from "../i18n.js";
 import TricolorRing from "../components/TricolorRing.jsx";
 
@@ -16,7 +16,7 @@ export default function Scan() {
   const [showHint, setShowHint] = useState(false);
 
   useEffect(() => {
-    speak(t.scanTitle, speechLocale.hi);
+    speakText(t.scanTitle, "hi", speechLocale.hi);
   }, [t.scanTitle]);
 
   useEffect(() => {
@@ -47,7 +47,7 @@ export default function Scan() {
 
   useEffect(() => {
     if (phase !== "identified" || !result) return;
-    speak(`${t.identifiedTitle}, ${result.name}`, speechLocale.hi);
+    speakText(`${t.identifiedTitle}, ${result.name}`, "hi", speechLocale.hi);
     const timer = setTimeout(() => go("AGENT"), 3000);
     return () => clearTimeout(timer);
   }, [phase, go, result, t.identifiedTitle]);

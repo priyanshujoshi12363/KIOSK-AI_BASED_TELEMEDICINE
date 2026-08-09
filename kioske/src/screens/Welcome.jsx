@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import Webcam from "react-webcam";
 import { useKiosk } from "../context/KioskContext.jsx";
 import { speechLocale } from "../i18n.js";
-import { speak } from "../lib/speech.js";
+import { speakText } from "../lib/ai.js";
 import { identifyVillager } from "../lib/api.js";
 import TricolorRing from "../components/TricolorRing.jsx";
 
@@ -14,7 +14,7 @@ export default function Welcome() {
   const [phase, setPhase] = useState("waiting");
 
   useEffect(() => {
-    speak(t.standInFront, speechLocale.hi);
+    speakText(t.standInFront, "hi", speechLocale.hi);
   }, [t.standInFront]);
 
   useEffect(() => {
@@ -30,7 +30,7 @@ export default function Welcome() {
           phaseRef.current = "greeting";
           setPhase("greeting");
           clearInterval(id);
-          await speak(t.welcomeSpoken, speechLocale.hi);
+          await speakText(t.welcomeSpoken, "hi", speechLocale.hi);
           go("SCAN");
         }
       } catch {
