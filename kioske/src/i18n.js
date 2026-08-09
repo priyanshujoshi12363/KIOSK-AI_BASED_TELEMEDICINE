@@ -85,6 +85,8 @@ export const t = {
     statusOffline: "Offline mode",
     kioskLabel: "Kiosk",
     poweredBy: "Secure · Aadhaar-linked · Free of cost",
+    emReturning: "Returning to the home screen in",
+    emDoneNow: "Done",
   },
   hi: {
     brand: "आरोग्य कियोस्क",
@@ -163,6 +165,8 @@ export const t = {
     statusOffline: "ऑफ़लाइन मोड",
     kioskLabel: "कियोस्क",
     poweredBy: "सुरक्षित · आधार-लिंक्ड · निःशुल्क",
+    emReturning: "होम स्क्रीन पर वापस जा रहे हैं",
+    emDoneNow: "पूर्ण",
   },
   gu: {
     brand: "આરોગ્ય કિયોસ્ક",
@@ -241,6 +245,8 @@ export const t = {
     statusOffline: "ઓફલાઇન મોડ",
     kioskLabel: "કિયોસ્ક",
     poweredBy: "સુરક્ષિત · આધાર-લિંક્ડ · વિનામૂલ્યે",
+    emReturning: "હોમ સ્ક્રીન પર પાછા જઈ રહ્યા છીએ",
+    emDoneNow: "પૂર્ણ",
   },
   ml: {
     brand: "ആരോഗ്യ കിയോസ്ക്",
@@ -319,6 +325,8 @@ export const t = {
     statusOffline: "ഓഫ്‌ലൈൻ മോഡ്",
     kioskLabel: "കിയോസ്ക്",
     poweredBy: "സുരക്ഷിതം · ആധാർ-ലിങ്ക്ഡ് · സൗജന്യം",
+    emReturning: "ഹോം സ്ക്രീനിലേക്ക് മടങ്ങുന്നു",
+    emDoneNow: "പൂർത്തിയായി",
   },
 };
 

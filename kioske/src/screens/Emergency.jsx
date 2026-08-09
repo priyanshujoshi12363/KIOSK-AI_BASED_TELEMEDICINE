@@ -25,8 +25,11 @@ const CATEGORY_LABEL = {
   OTHER: "Emergency",
 };
 
+const RETURN_AFTER_SECONDS = 30;
+
 export default function Emergency() {
-  const { t, lang, setLang, go, villager } = useKiosk();
+  const { t, lang, setLang, go, villager, reset } = useKiosk();
+  const [countdown, setCountdown] = useState(RETURN_AFTER_SECONDS);
   const [phase, setPhase] = useState("starting");
   const [heard, setHeard] = useState("");
   const [draft, setDraft] = useState("");
@@ -136,6 +139,21 @@ export default function Emergency() {
     submit(v);
   }
 
+  useEffect(() => {
+    if (phase !== "sent") return;
+    const id = setInterval(() => {
+      setCountdown((n) => {
+        if (n <= 1) {
+          clearInterval(id);
+          reset();
+          return 0;
+        }
+        return n - 1;
+      });
+    }, 1000);
+    return () => clearInterval(id);
+  }, [phase, reset]);
+
   if (phase === "sent") {
     return (
       <div className="flex flex-col items-center text-center">
@@ -172,6 +190,24 @@ export default function Emergency() {
 
         <p className="mt-6 max-w-lg text-base font-semibold text-red-600">{t.emStayCalm}</p>
         <p className="mt-1 text-sm font-bold tracking-wide text-red-500">{t.emCall108}</p>
+
+        <button
+          onClick={reset}
+          className="mt-7 rounded-xl bg-[#0a1a3d] px-10 py-3.5 text-lg font-bold text-white shadow-sm transition hover:brightness-125"
+        >
+          {t.emDoneNow}
+        </button>
+
+        <div className="mt-3 flex items-center gap-2 text-xs text-zinc-400">
+          <span>{t.emReturning}</span>
+          <span className="tabular-nums font-bold text-zinc-500">{countdown}s</span>
+        </div>
+        <div className="mt-2 h-0.5 w-56 overflow-hidden rounded-full bg-zinc-200">
+          <div
+            className="h-full bg-indiagreen transition-all duration-1000 ease-linear"
+            style={{ width: `${(countdown / RETURN_AFTER_SECONDS) * 100}%` }}
+          />
+        </div>
       </div>
     );
   }
