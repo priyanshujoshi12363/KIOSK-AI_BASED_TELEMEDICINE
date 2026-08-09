@@ -1,0 +1,93 @@
+{
+  "meta": {
+    "name": "Aarogya Standard Prescription",
+    "version": 1,
+    "pageSize": "A4"
+  },
+  "theme": {
+    "primary": "#01055b",
+    "saffron": "#ff9933",
+    "green": "#138808",
+    "text": "#16181f",
+    "muted": "#6b7280",
+    "faint": "#9aa1ad",
+    "line": "#e3e6ec",
+    "panel": "#fbfcfe",
+    "font": "'Segoe UI', Arial, sans-serif",
+    "baseSize": "12.5px"
+  },
+  "header": {
+    "tricolorStrip": true,
+    "title": "Aarogya Kiosk",
+    "subtitle": "AI-Assisted Tele-medicine · Government of Kerala",
+    "meta": [
+      { "label": "Rx No.", "value": "{{rxNo}}" },
+      { "value": "{{date}}" },
+      { "value": "{{kiosk}}", "hideIfEmpty": true }
+    ]
+  },
+  "sections": [
+    {
+      "type": "columns",
+      "columns": [
+        {
+          "label": "Patient",
+          "value": "{{patient.name}}",
+          "sub": "{{patient.village}} · {{patient.phone}}"
+        },
+        {
+          "label": "Consulting Doctor",
+          "value": "{{doctor.name}}",
+          "sub": "{{doctor.specialization}}"
+        }
+      ]
+    },
+    {
+      "type": "panel",
+      "title": "Assessment",
+      "value": "{{diagnosis}}",
+      "hideIfEmpty": true
+    },
+    { "type": "rxSymbol" },
+    {
+      "type": "table",
+      "source": "medicines",
+      "emptyText": "No medicines were prescribed in this consultation.",
+      "columns": [
+        { "header": "", "kind": "index", "width": "34px", "align": "center" },
+        { "header": "Medicine", "field": "name", "sub": "instructions", "emphasis": true },
+        { "header": "Dose", "field": "dosage", "fallback": "-" },
+        { "header": "Frequency", "field": "frequency", "fallback": "-", "mono": true },
+        { "header": "When", "field": "timing", "fallback": "-" },
+        { "header": "Duration", "field": "duration", "fallback": "-" },
+        { "header": "Qty", "field": "quantity", "width": "34px", "align": "center", "strong": true }
+      ]
+    },
+    {
+      "type": "panel",
+      "title": "Advice",
+      "value": "{{advice}}",
+      "hideIfEmpty": true
+    },
+    {
+      "type": "list",
+      "title": "Doctor's Notes",
+      "source": "keyPoints",
+      "hideIfEmpty": true
+    },
+    {
+      "type": "panel",
+      "title": "Follow-up",
+      "value": "{{followUp}}",
+      "hideIfEmpty": true
+    }
+  ],
+  "footer": {
+    "note": "Generated from an AI-assisted tele-consultation and confirmed by the attending doctor. Medicines are delivered by your ASHA worker. Not valid for medico-legal purposes.",
+    "signature": {
+      "name": "{{doctor.name}}",
+      "fallbackName": "Attending Doctor",
+      "caption": "Digitally confirmed"
+    }
+  }
+}
