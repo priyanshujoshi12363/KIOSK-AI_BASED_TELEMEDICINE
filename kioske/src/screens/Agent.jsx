@@ -192,59 +192,87 @@ export default function Agent() {
               : "";
 
   return (
-    <div className="flex h-[72vh] flex-col">
-      <div className="mb-4 flex items-center gap-3">
-        <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-navy to-[#2a2f7a] text-2xl shadow-md">
+    <div className="flex h-[74vh] flex-col">
+      <div className="mb-3 flex items-center gap-3 rounded-t-xl border border-zinc-200 border-b-transparent bg-white px-5 py-3">
+        <div className="flex h-11 w-11 items-center justify-center rounded-lg bg-[#0a1a3d] text-xl">
           🩺
         </div>
-        <div>
-          <div className="font-bold text-zinc-900">AI Health Assistant</div>
+        <div className="leading-tight">
+          <div className="text-[15px] font-bold text-[#0a1a3d]">{t.checkupTitle}</div>
           <div className="text-xs font-medium text-zinc-500">{villager?.name}</div>
         </div>
-        <div className="ml-auto h-1.5 w-24 overflow-hidden rounded-full">
-          <div className="flex h-full">
-            <div className="flex-1 bg-saffron" />
-            <div className="flex-1 bg-white" />
-            <div className="flex-1 bg-indiagreen" />
-          </div>
+        <div className="ml-auto flex items-center gap-2">
+          <span
+            className={`h-2 w-2 rounded-full ${
+              phase === "listening"
+                ? "animate-ping bg-red-500"
+                : phase === "speaking"
+                  ? "animate-pulse bg-indiagreen"
+                  : "bg-zinc-300"
+            }`}
+          />
+          <span className="text-xs font-semibold uppercase tracking-wider text-zinc-500">
+            {statusLabel || "—"}
+          </span>
         </div>
       </div>
 
       <div
         ref={scrollRef}
-        className="glass flex-1 space-y-3 overflow-y-auto rounded-3xl p-5 shadow-sm"
+        className="flex-1 space-y-3 overflow-y-auto border-x border-zinc-200 bg-white/70 px-5 py-4"
       >
         {messages.map((m, i) => (
           <div key={i} className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}>
+            {m.role === "agent" && (
+              <span className="mr-2 mt-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#0a1a3d] text-xs text-white">
+                🩺
+              </span>
+            )}
             <div
-              className={`max-w-[80%] rounded-2xl px-4 py-3 text-lg shadow-sm ${
+              className={`max-w-[76%] px-4 py-2.5 text-[17px] leading-relaxed shadow-sm ${
                 m.role === "user"
-                  ? "bg-gradient-to-br from-saffron to-[#ff8a1f] text-zinc-950"
-                  : "border border-zinc-200 bg-white text-zinc-800"
+                  ? "rounded-2xl rounded-br-sm bg-[#0a1a3d] text-white"
+                  : "rounded-2xl rounded-bl-sm border border-zinc-200 bg-white text-zinc-800"
               }`}
             >
-              {m.text || "…"}
+              {m.text || (
+                <span className="inline-flex gap-1">
+                  <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-zinc-400 [animation-delay:-0.3s]" />
+                  <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-zinc-400 [animation-delay:-0.15s]" />
+                  <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-zinc-400" />
+                </span>
+              )}
             </div>
           </div>
         ))}
       </div>
 
-      <div className="mt-4">
-        <div className="mb-3 flex items-center justify-center gap-3">
+      <div className="rounded-b-xl border border-zinc-200 border-t-zinc-100 bg-white px-5 py-4">
+        <div className="mb-3 flex min-h-[24px] items-center justify-center gap-3">
           {phase === "listening" && (
-            <span className="flex items-center gap-2 text-red-500">
-              <span className="h-3 w-3 animate-ping rounded-full bg-red-500" />
-              <span className="font-semibold">{statusLabel}</span>
+            <span className="flex items-center gap-2.5 rounded-full bg-red-50 px-4 py-1.5 text-red-600">
+              <span className="flex items-end gap-0.5">
+                {[0, 1, 2, 3].map((i) => (
+                  <span
+                    key={i}
+                    className="w-0.5 animate-bounce rounded-full bg-red-500"
+                    style={{ height: `${6 + (i % 2) * 8}px`, animationDelay: `${i * 0.12}s` }}
+                  />
+                ))}
+              </span>
+              <span className="text-sm font-bold">{statusLabel}</span>
             </span>
           )}
           {(phase === "speaking" || phase === "thinking" || phase === "loading") && (
-            <span className="flex items-center gap-2 text-navy">
-              <span className="h-3 w-3 animate-pulse rounded-full bg-navy" />
-              <span className="font-semibold">{statusLabel}</span>
+            <span className="flex items-center gap-2 rounded-full bg-zinc-100 px-4 py-1.5 text-[#0a1a3d]">
+              <span className="h-2 w-2 animate-pulse rounded-full bg-[#0a1a3d]" />
+              <span className="text-sm font-bold">{statusLabel}</span>
             </span>
           )}
           {phase === "emergency" && (
-            <span className="font-semibold text-red-600">⚠ Emergency</span>
+            <span className="flex items-center gap-2 rounded-full bg-red-600 px-5 py-1.5 text-sm font-bold text-white">
+              ⚠ {t.emergencyTitle}
+            </span>
           )}
         </div>
 
@@ -255,12 +283,12 @@ export default function Agent() {
             onKeyDown={(e) => e.key === "Enter" && submitTyped()}
             placeholder={t.typeAnswer}
             disabled={phase !== "listening"}
-            className="flex-1 rounded-2xl border-2 border-zinc-200 bg-white/80 px-5 py-3.5 text-lg text-zinc-900 shadow-sm outline-none transition focus:border-saffron focus:ring-2 focus:ring-saffron/25 disabled:bg-zinc-50"
+            className="flex-1 rounded-lg border border-zinc-300 bg-white px-4 py-3 text-[17px] text-zinc-900 outline-none transition focus:border-[#0a1a3d] focus:ring-2 focus:ring-[#0a1a3d]/15 disabled:bg-zinc-50 disabled:text-zinc-400"
           />
           <button
             onClick={submitTyped}
             disabled={phase !== "listening" || !draft.trim()}
-            className="rounded-2xl bg-gradient-to-br from-saffron to-[#ff8a1f] px-7 py-3.5 text-lg font-bold text-zinc-950 shadow-sm transition hover:brightness-105 disabled:opacity-40"
+            className="rounded-lg bg-[#0a1a3d] px-7 py-3 text-[17px] font-bold text-white transition hover:brightness-125 disabled:opacity-30"
           >
             {t.send}
           </button>

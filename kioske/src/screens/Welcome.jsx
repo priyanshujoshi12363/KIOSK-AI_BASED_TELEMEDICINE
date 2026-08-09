@@ -47,16 +47,16 @@ export default function Welcome() {
 
   return (
     <div className="flex flex-col items-center text-center">
-      <span className="mb-8 inline-flex items-center gap-2 rounded-full border border-zinc-200 bg-white/70 px-4 py-1.5 text-xs font-semibold text-navy shadow-sm">
-        <span className="h-2 w-2 rounded-full bg-indiagreen" />
-        {t.tagline}
+      <span className="mb-7 inline-flex items-center gap-2 rounded-md border border-indiagreen/30 bg-indiagreen/[0.07] px-4 py-1.5 text-xs font-bold uppercase tracking-wider text-indiagreen">
+        <span className="h-1.5 w-1.5 rounded-full bg-indiagreen" />
+        {t.checkupTitle}
       </span>
 
-      <div className="relative mb-9">
+      <div className="relative mb-8">
         {phase === "greeting" && (
           <span className="pulse-ring absolute inset-0 rounded-full border-4 border-indiagreen" />
         )}
-        <TricolorRing size={220} thickness={8}>
+        <TricolorRing size={210} thickness={7}>
           <Webcam
             ref={webcamRef}
             audio={false}
@@ -68,18 +68,20 @@ export default function Welcome() {
         </TricolorRing>
       </div>
 
-      <h1 className="text-6xl font-black tracking-tight text-zinc-900">{t.welcomeTitle}</h1>
-      <p className="mt-5 max-w-xl text-xl leading-relaxed text-zinc-500">
+      <h1 className="text-[44px] font-bold leading-tight tracking-tight text-[#0a1a3d]">
+        {t.welcomeTitle}
+      </h1>
+      <p className="mt-4 max-w-xl text-xl leading-relaxed text-zinc-500">
         {phase === "greeting" ? t.welcomeSpoken : t.standInFront}
       </p>
 
-      <div className="mt-8 inline-flex items-center gap-3 rounded-full bg-white/70 px-5 py-2.5 shadow-sm">
+      <div className="mt-7 inline-flex items-center gap-2.5 rounded-full border border-zinc-200 bg-white px-5 py-2 shadow-sm">
         <span
-          className={`h-3 w-3 rounded-full ${
+          className={`h-2 w-2 rounded-full ${
             phase === "greeting" ? "bg-indiagreen" : "animate-ping bg-saffron"
           }`}
         />
-        <span className="text-sm font-semibold uppercase tracking-widest text-zinc-500">
+        <span className="text-xs font-bold uppercase tracking-[0.14em] text-zinc-500">
           {phase === "greeting" ? t.speakingLabel : t.lookingForYou}
         </span>
       </div>
