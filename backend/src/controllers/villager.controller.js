@@ -58,10 +58,6 @@ export async function registerVillager(req, res) {
         ? [faceImage]
         : [];
 
-    if (images.length === 0) {
-      return res.status(400).json({ error: "at least one faceImage is required" });
-    }
-
     const aadhaarHash = hashAadhaar(aadhaarNumber);
     const existing = await Villager.findOne({ aadhaarHash });
     if (existing) {
@@ -71,14 +67,15 @@ export async function registerVillager(req, res) {
     }
 
     const faceEmbeddings = [];
+    let faceError = null;
+
     for (let i = 0; i < images.length; i++) {
       try {
         const embedding = await getFaceEmbedding(images[i]);
         faceEmbeddings.push(embedding);
       } catch (err) {
-        return res
-          .status(400)
-          .json({ error: `Face capture failed on image ${i + 1}: ${err.message}` });
+        faceError = `Face capture failed on image ${i + 1}: ${err.message}`;
+        break;
       }
     }
 
@@ -95,11 +92,15 @@ export async function registerVillager(req, res) {
       aadhaarHash,
       aadhaarLast4: aadhaarLast4(aadhaarNumber),
       faceEmbeddings,
-      faceRegistered: true,
+      faceRegistered: faceEmbeddings.length > 0,
       assignedAshaWorker,
     });
 
-    return res.status(201).json({ villager: toPublic(villager) });
+    return res.status(201).json({
+      villager: toPublic(villager),
+      faceEnrolled: faceEmbeddings.length > 0,
+      faceError,
+    });
   } catch (err) {
     if (err.code === 11000) {
       return res

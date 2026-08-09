@@ -10,7 +10,7 @@ import {
   Alert,
   SectionTitle,
 } from "../components/ui.jsx";
-import { apiPost } from "../lib/api.js";
+import { apiPost, enrollFace } from "../lib/api.js";
 import { useAuth } from "../context/AuthContext.jsx";
 
 const empty = {
@@ -54,15 +54,35 @@ export default function RegisterVillager() {
         { ...form, faceImage },
         token
       );
+
+      let faceEnrolled = data.faceEnrolled;
+
+      if (!faceEnrolled) {
+        try {
+          await enrollFace(data.villager.id, [faceImage]);
+          faceEnrolled = true;
+        } catch (faceErr) {
+          faceEnrolled = false;
+        }
+      }
+
       const assigned = data.villager.assignedAshaWorker
         ? "An ASHA worker has been assigned."
         : "No ASHA worker available for this village yet.";
-      setStatus({
-        type: "success",
-        msg: `${data.villager.name} registered (Aadhaar ****${data.villager.aadhaarLast4}). ${assigned}`,
-      });
-      setForm(empty);
-      setFaceImage(null);
+
+      if (faceEnrolled) {
+        setStatus({
+          type: "success",
+          msg: `${data.villager.name} registered (Aadhaar ****${data.villager.aadhaarLast4}). Face enrolled. ${assigned}`,
+        });
+        setForm(empty);
+        setFaceImage(null);
+      } else {
+        setStatus({
+          type: "error",
+          msg: `${data.villager.name} was saved, but the face could not be enrolled. Start the local AI service and register the face again, or the kiosk will not recognise them.`,
+        });
+      }
     } catch (err) {
       setStatus({ type: "error", msg: err.message });
     } finally {
