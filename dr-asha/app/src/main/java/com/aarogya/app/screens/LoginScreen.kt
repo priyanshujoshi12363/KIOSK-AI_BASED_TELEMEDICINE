@@ -36,6 +36,9 @@ import com.aarogya.app.data.SessionStore
 import com.aarogya.app.data.remote.ApiClient
 import com.aarogya.app.data.remote.AshaLoginRequest
 import com.aarogya.app.data.remote.DoctorLoginRequest
+import retrofit2.HttpException
+import java.io.IOException
+import java.net.SocketTimeoutException
 import com.aarogya.app.ui.components.TricolorStrip
 import com.aarogya.app.ui.theme.IndiaGreen
 import com.aarogya.app.ui.theme.Navy
@@ -64,7 +67,7 @@ fun LoginScreen(onLoggedIn: (String) -> Unit) {
             try {
                 if (role == "DOCTOR") {
                     val r = ApiClient.service.doctorLogin(
-                        DoctorLoginRequest(identifier.trim(), password)
+                        DoctorLoginRequest(identifier.trim(), password.trim())
                     )
                     if (r.token != null) {
                         SessionStore.save(context, r.token, "DOCTOR", r.doctor?.name)
@@ -72,15 +75,27 @@ fun LoginScreen(onLoggedIn: (String) -> Unit) {
                     } else error = "Login failed"
                 } else {
                     val r = ApiClient.service.ashaLogin(
-                        AshaLoginRequest(identifier.trim(), password)
+                        AshaLoginRequest(identifier.trim(), password.trim())
                     )
                     if (r.token != null) {
                         SessionStore.save(context, r.token, "ASHA", r.asha?.name)
                         onLoggedIn("ASHA")
                     } else error = "Login failed"
                 }
+            } catch (e: HttpException) {
+                error = when (e.code()) {
+                    401 -> if (role == "DOCTOR") "Wrong email or password"
+                           else "Wrong phone number or password"
+                    403 -> "This account is not active"
+                    in 500..599 -> "Server problem, please try again"
+                    else -> "Could not sign in (${e.code()})"
+                }
+            } catch (e: SocketTimeoutException) {
+                error = "Server is waking up, please try again in a moment"
+            } catch (e: IOException) {
+                error = "No connection to the server. Check your internet."
             } catch (e: Exception) {
-                error = "Invalid credentials or network error"
+                error = "Could not sign in"
             } finally {
                 loading = false
             }
