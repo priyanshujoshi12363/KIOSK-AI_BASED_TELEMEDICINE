@@ -3,6 +3,7 @@ import AshaWorker from "../models/AshaWorker.js";
 import Villager from "../models/Villager.js";
 import Notification from "../models/Notification.js";
 import { triage, CategoryLabel } from "../services/emergencyTriage.js";
+import { workersForDuty } from "../services/ashaAssignment.js";
 import { getIO } from "../signaling.js";
 import {
   NotificationType,
@@ -10,6 +11,7 @@ import {
   NotificationStatus,
   EmergencySeverity,
   EmergencyStatus,
+  AshaDuty,
 } from "../constants.js";
 
 function toPublic(a) {
@@ -45,20 +47,6 @@ function cleanLocation(loc) {
   };
 }
 
-async function resolveAshaWorkers(villagerDoc, village) {
-  if (villagerDoc?.assignedAshaWorker) {
-    return [villagerDoc.assignedAshaWorker];
-  }
-
-  if (village) {
-    const inVillage = await AshaWorker.find({ village, isActive: true }).select("_id");
-    if (inVillage.length) return inVillage.map((a) => a._id);
-  }
-
-  const anyActive = await AshaWorker.find({ isActive: true }).select("_id").limit(20);
-  return anyActive.map((a) => a._id);
-}
-
 export async function createEmergency(req, res) {
   try {
     const { transcript, language, summary, villagerId, village, location } = req.body;
@@ -78,7 +66,7 @@ export async function createEmergency(req, res) {
     }
 
     const resolvedVillage = villagerDoc?.village || village || "";
-    const ashaIds = await resolveAshaWorkers(villagerDoc, resolvedVillage);
+    const ashaIds = await workersForDuty(AshaDuty.EMERGENCY);
 
     const alert = await EmergencyAlert.create({
       villager: villagerDoc?._id,
@@ -146,13 +134,13 @@ export async function createEmergency(req, res) {
 
 export async function getEmergencies(req, res) {
   try {
-    const worker = await AshaWorker.findById(req.user.id).select("village");
-    const conditions = [{ ashaWorker: req.user.id }, { ashaWorker: null }];
-    if (worker?.village) {
-      conditions.push({ village: worker.village });
-    }
+    const worker = await AshaWorker.findById(req.user.id).select("duty");
+    const canSeeAll =
+      !worker || worker.duty === AshaDuty.EMERGENCY || worker.duty === AshaDuty.BOTH;
 
-    const filter = { $or: conditions };
+    const scope = canSeeAll ? {} : { ashaWorker: req.user.id };
+
+    const filter = { ...scope };
     if (req.query.status) {
       filter.status = req.query.status;
     }
@@ -163,7 +151,7 @@ export async function getEmergencies(req, res) {
       .limit(50);
 
     const open = await EmergencyAlert.countDocuments({
-      $or: conditions,
+      ...scope,
       status: EmergencyStatus.OPEN,
     });
 

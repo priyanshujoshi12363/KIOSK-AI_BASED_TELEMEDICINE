@@ -2,12 +2,14 @@ import Prescription from "../models/Prescription.js";
 import Medicine from "../models/Medicine.js";
 import ConsultationSession from "../models/ConsultationSession.js";
 import Notification from "../models/Notification.js";
+import { workersForDuty } from "../services/ashaAssignment.js";
 import {
   ConsultationStatus,
   PrescriptionStatus,
   NotificationType,
   NotificationPriority,
   Urgency,
+  AshaDuty,
 } from "../constants.js";
 
 export async function getCatalog(req, res) {
@@ -187,15 +189,15 @@ export async function confirmPrescription(req, res) {
     session.consultEndedAt = session.consultEndedAt || new Date();
     await session.save();
 
-    let notified = false;
-    if (session.assignedAshaWorker) {
-      const priority =
-        session.urgency === Urgency.EMERGENCY
-          ? NotificationPriority.URGENT
-          : NotificationPriority.NORMAL;
+    const deliveryWorkers = await workersForDuty(AshaDuty.DELIVERY);
+    const priority =
+      session.urgency === Urgency.EMERGENCY
+        ? NotificationPriority.URGENT
+        : NotificationPriority.NORMAL;
 
-      await Notification.create({
-        ashaWorker: session.assignedAshaWorker,
+    await Notification.insertMany(
+      deliveryWorkers.map((ashaId) => ({
+        ashaWorker: ashaId,
         villager: session.villager._id,
         session: session._id,
         prescription: prescription._id,
@@ -206,9 +208,9 @@ export async function confirmPrescription(req, res) {
         deliveryAddress: session.villager.address,
         medicines: prescription.medicines,
         location: session.location,
-      });
-      notified = true;
-    }
+      }))
+    );
+    const notified = deliveryWorkers.length > 0;
 
     return res.json({ prescription: toPublicRx(prescription), notified });
   } catch (err) {
@@ -258,15 +260,15 @@ export async function createPrescription(req, res) {
     session.consultEndedAt = new Date();
     await session.save();
 
-    let notified = false;
-    if (session.assignedAshaWorker) {
-      const priority =
-        session.urgency === Urgency.EMERGENCY
-          ? NotificationPriority.URGENT
-          : NotificationPriority.NORMAL;
+    const deliveryWorkers = await workersForDuty(AshaDuty.DELIVERY);
+    const priority =
+      session.urgency === Urgency.EMERGENCY
+        ? NotificationPriority.URGENT
+        : NotificationPriority.NORMAL;
 
-      await Notification.create({
-        ashaWorker: session.assignedAshaWorker,
+    await Notification.insertMany(
+      deliveryWorkers.map((ashaId) => ({
+        ashaWorker: ashaId,
         villager: session.villager._id,
         session: session._id,
         prescription: prescription._id,
@@ -277,9 +279,9 @@ export async function createPrescription(req, res) {
         deliveryAddress: session.villager.address,
         medicines: items,
         location: session.location,
-      });
-      notified = true;
-    }
+      }))
+    );
+    const notified = deliveryWorkers.length > 0;
 
     return res.status(201).json({ prescription, notified });
   } catch {

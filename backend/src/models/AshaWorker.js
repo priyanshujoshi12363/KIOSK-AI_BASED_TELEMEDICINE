@@ -1,4 +1,5 @@
 import mongoose from "mongoose";
+import { AshaDuty } from "../constants.js";
 
 const ashaWorkerSchema = new mongoose.Schema(
   {
@@ -29,6 +30,11 @@ const ashaWorkerSchema = new mongoose.Schema(
     address: {
       type: String,
       trim: true,
+    },
+    duty: {
+      type: String,
+      enum: Object.values(AshaDuty),
+      default: AshaDuty.BOTH,
     },
     isActive: {
       type: Boolean,

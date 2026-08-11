@@ -11,6 +11,12 @@ export const Gender = {
   OTHER: "OTHER",
 };
 
+export const AshaDuty = {
+  EMERGENCY: "EMERGENCY",
+  DELIVERY: "DELIVERY",
+  BOTH: "BOTH",
+};
+
 export const NotificationType = {
   MEDICINE_DELIVERY: "MEDICINE_DELIVERY",
   NEW_ASSIGNMENT: "NEW_ASSIGNMENT",
