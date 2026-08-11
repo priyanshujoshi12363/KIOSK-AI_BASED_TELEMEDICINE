@@ -28,7 +28,7 @@ function configured() {
   return { sarvam: Boolean(SARVAM_KEY), ollama: Boolean(OLLAMA_KEY), model: CLOUD_MODEL };
 }
 
-async function reachable(timeoutMs = 3000) {
+async function reachable(timeoutMs = 8000) {
   const t = withTimeout(timeoutMs);
   try {
     const res = await fetch("https://ollama.com/api/tags", {

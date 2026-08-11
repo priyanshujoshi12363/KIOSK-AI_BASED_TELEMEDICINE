@@ -146,9 +146,13 @@ export async function createEmergency(req, res) {
 
 export async function getEmergencies(req, res) {
   try {
-    const filter = {
-      $or: [{ ashaWorker: req.user.id }, { ashaWorker: null }],
-    };
+    const worker = await AshaWorker.findById(req.user.id).select("village");
+    const conditions = [{ ashaWorker: req.user.id }, { ashaWorker: null }];
+    if (worker?.village) {
+      conditions.push({ village: worker.village });
+    }
+
+    const filter = { $or: conditions };
     if (req.query.status) {
       filter.status = req.query.status;
     }
@@ -159,7 +163,7 @@ export async function getEmergencies(req, res) {
       .limit(50);
 
     const open = await EmergencyAlert.countDocuments({
-      ashaWorker: req.user.id,
+      $or: conditions,
       status: EmergencyStatus.OPEN,
     });
 

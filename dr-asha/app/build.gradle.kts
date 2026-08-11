@@ -16,7 +16,7 @@ android {
         versionName = "1.0"
 
         val apiBaseUrl = (project.findProperty("apiBaseUrl") as String?)
-            ?: "http://10.0.2.2:4000/"
+            ?: "https://kiosk-ai-based-telemedicine.onrender.com/"
         buildConfigField("String", "API_BASE_URL", "\"$apiBaseUrl\"")
     }
 

@@ -15,21 +15,28 @@ export function hasCloudBridge() {
   return Boolean(bridge);
 }
 
+function refreshOnline() {
+  bridge
+    .reachable()
+    .then((res) => {
+      onlineState = { checked: Date.now(), value: Boolean(res?.reachable) };
+    })
+    .catch(() => {
+      onlineState = { checked: Date.now(), value: false };
+    });
+}
+
 export async function isOnline({ force = false } = {}) {
   if (!bridge) return false;
+  if (typeof navigator !== "undefined" && navigator.onLine === false) return false;
+
   const now = Date.now();
-  if (!force && now - onlineState.checked < ONLINE_RECHECK_MS) {
-    return onlineState.value;
+  if (force || now - onlineState.checked >= ONLINE_RECHECK_MS) {
+    refreshOnline();
   }
-  let value = false;
-  try {
-    const res = await bridge.reachable();
-    value = Boolean(res?.reachable);
-  } catch {
-    value = false;
-  }
-  onlineState = { checked: now, value };
-  return value;
+
+  if (onlineState.checked === 0) return true;
+  return onlineState.value;
 }
 
 async function offlineConsult({ audioBase64, language, history }) {
@@ -76,15 +83,15 @@ export async function transcribeAudio(float32Audio, language) {
       const res = await bridge.transcribe({ audioBase64, language });
       if (res?.ok && res.text) return { text: res.text, mode: "cloud" };
     } catch {
-      // fall through to offline
+      // cloud failed, use in-browser whisper below
     }
-  }
-
-  try {
-    const res = await offlineTranscribe({ audioBase64, language });
-    if (res?.text) return { text: res.text, mode: "local" };
-  } catch {
-    // fall through to in-browser whisper
+  } else {
+    try {
+      const res = await offlineTranscribe({ audioBase64, language });
+      if (res?.text) return { text: res.text, mode: "local" };
+    } catch {
+      // offline python service unavailable, use in-browser whisper below
+    }
   }
 
   if (STT_ENABLED) {
@@ -96,12 +103,28 @@ export async function transcribeAudio(float32Audio, language) {
 }
 
 export async function askAgentRaw({ messages, system }) {
-  if (await isOnline()) {
+  const online = await isOnline();
+
+  if (online) {
     try {
       const res = await bridge.chat({ messages, system });
       if (res?.ok && res.text) return res.text;
     } catch {
-      // fall through to local
+      // cloud failed
+    }
+  } else {
+    try {
+      const res = await fetch(`${AI_SERVICE}/chat`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ messages, system }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data?.reply) return data.reply;
+      }
+    } catch {
+      // offline python service unavailable
     }
   }
 
@@ -112,22 +135,8 @@ export async function askAgentRaw({ messages, system }) {
       );
       if (reply) return reply;
     } catch {
-      // fall through
+      // no path available
     }
-  }
-
-  try {
-    const res = await fetch(`${AI_SERVICE}/chat`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ messages, system }),
-    });
-    if (res.ok) {
-      const data = await res.json();
-      if (data?.reply) return data.reply;
-    }
-  } catch {
-    // no path available
   }
 
   return "";
@@ -172,7 +181,9 @@ export async function askAgent({ float32Audio, text, language, history = [], sys
 
   if (LLM_ENABLED) {
     try {
-      const reply = await localLLM(system ? [{ role: "system", content: system }, ...messages] : messages);
+      const reply = await localLLM(
+        system ? [{ role: "system", content: system }, ...messages] : messages
+      );
       if (reply) return { transcript, reply, mode: "local" };
     } catch {
       // fall through
@@ -211,18 +222,18 @@ export async function speakText(text, language, locale) {
         return "cloud";
       }
     } catch {
-      // fall through
+      // cloud failed, use browser voice below
     }
-  }
-
-  try {
-    const res = await offlineTTS({ text, language });
-    if (res?.audio) {
-      await playBase64(res.audio, res.mime || "audio/wav");
-      return "local";
+  } else {
+    try {
+      const res = await offlineTTS({ text, language });
+      if (res?.audio) {
+        await playBase64(res.audio, res.mime || "audio/wav");
+        return "local";
+      }
+    } catch {
+      // offline python service unavailable, use browser voice below
     }
-  } catch {
-    // fall through
   }
 
   await localSpeak(text, locale);

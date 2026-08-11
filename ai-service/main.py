@@ -13,8 +13,16 @@ load_dotenv(os.path.join(os.path.dirname(__file__), ".env"))
 import db
 import face
 import identity
-import tts as tts_engine
-import voice
+
+try:
+    import tts as tts_engine
+except Exception:
+    tts_engine = None
+
+try:
+    import voice
+except Exception:
+    voice = None
 
 app = FastAPI(title="Aarogya Kiosk AI Service", version="0.2.0")
 
@@ -163,16 +171,25 @@ class TTSResponse(BaseModel):
 
 @app.get("/voice/status")
 def voice_status():
+    if voice is None:
+        return {
+            "model": None,
+            "loaded": False,
+            "device": "cpu",
+            "kokoro": bool(tts_engine and tts_engine.available()),
+        }
     return {
         "model": voice.MODEL_ID,
         "loaded": voice.is_loaded(),
         "device": "cuda" if voice.torch.cuda.is_available() else "cpu",
-        "kokoro": tts_engine.available(),
+        "kokoro": bool(tts_engine and tts_engine.available()),
     }
 
 
 @app.post("/voice/transcribe", response_model=TranscribeResponse)
 def voice_transcribe(req: TranscribeRequest):
+    if voice is None:
+        raise HTTPException(status_code=503, detail="voice_unavailable")
     try:
         return TranscribeResponse(text=voice.transcribe(req.audio, req.language))
     except ValueError:
@@ -183,6 +200,8 @@ def voice_transcribe(req: TranscribeRequest):
 
 @app.post("/voice/consult", response_model=ConsultResponse)
 def voice_consult(req: ConsultRequest):
+    if voice is None:
+        raise HTTPException(status_code=503, detail="voice_unavailable")
     try:
         history = [turn.model_dump() for turn in req.history]
         result = voice.consult(req.audio, req.language, history)
@@ -204,6 +223,8 @@ class ChatResponse(BaseModel):
 
 @app.post("/chat", response_model=ChatResponse)
 def chat(req: ChatRequest):
+    if voice is None:
+        raise HTTPException(status_code=503, detail="voice_unavailable")
     try:
         messages = [turn.model_dump() for turn in req.messages]
         return ChatResponse(reply=voice.chat(messages, req.system))
@@ -213,6 +234,8 @@ def chat(req: ChatRequest):
 
 @app.post("/tts", response_model=TTSResponse)
 def synthesize(req: TTSRequest):
+    if tts_engine is None:
+        raise HTTPException(status_code=503, detail="tts_unavailable")
     try:
         result = tts_engine.synthesize(req.text, req.language)
         return TTSResponse(audio=result["audio"], engine=result["engine"])
