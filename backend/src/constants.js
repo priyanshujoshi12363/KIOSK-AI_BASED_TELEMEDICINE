@@ -15,6 +15,7 @@ export const AshaDuty = {
   EMERGENCY: "EMERGENCY",
   DELIVERY: "DELIVERY",
   BOTH: "BOTH",
+  OPERATOR: "OPERATOR",
 };
 
 export const NotificationType = {
